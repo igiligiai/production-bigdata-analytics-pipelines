@@ -1,0 +1,18 @@
+resources:
+  # ====================================================================
+  # ALERTS
+  # ====================================================================
+  
+  alerts:
+    high_volume_anomaly_alert:
+      name: "High Volume Anomaly Alert"
+      query_id: "${resources.queries.volume_anomaly_detection.id}"
+      condition:
+        metric: "ANOMALY_COUNT"
+        operator: ">"
+        value: 5
+      display_options:
+        include_history: true
+      notification_targets:
+        slack:
+          - "#data-alerts"

@@ -47,7 +47,7 @@ with this project. It's also possible to interact with it directly using the CLI
    ```
 
    Note that the default job from the template has a schedule that runs every day
-   (defined in resources/production_ecommerce_analytics_pipelines.job.yml). The schedule
+   (defined in resources/jobs/daily_ecommerce_pipeline.yml). The schedule
    is paused when deploying in development mode (see
    https://docs.databricks.com/dev-tools/bundles/deployment-modes.html).
 

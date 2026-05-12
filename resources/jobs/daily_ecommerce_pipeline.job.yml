@@ -1,0 +1,82 @@
+resources:
+  jobs:
+    daily_ecommerce_pipeline:
+      name: Daily E-Commerce ETL Pipeline
+      description: "Multi-stage pipeline: Extract APIs → Bronze → Silver → Gold"
+      
+      schedule:
+        quartz_cron_expression: "0 0 9 * * ?"
+        timezone_id: "Europe/Berlin"
+        pause_status: "UNPAUSED"
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      
+      new_cluster:
+        cluster_name: "ecommerce-prod-etl"
+        spark_version: "13.3.x-scala2.12"
+        node_type_id: "i3.2xlarge"
+        driver_node_type_id: "i3.2xlarge"
+        num_workers: 4
+        autotermination_minutes: 30
+        
+        aws_attributes:
+          availability: "SPOT"
+        
+        spark_conf:
+          "spark.sql.shuffle.partitions": "200"
+          "spark.databricks.delta.schema.autoMerge.enabled": "true"
+          "spark.sql.adaptive.enabled": "true"
+      
+      tasks:
+        - task_key: stage_1_extract_apis
+          notebook_task:
+            notebook_path: "${workspace.file_path}/notebooks/01_extract"
+            base_parameters:
+              execution_mode: "production"
+              max_retries: "3"
+          timeout_seconds: 900
+          
+          email_notifications:
+            on_failure:
+              - data-team@company.com
+          
+          depends_on: []
+        
+        - task_key: stage_2_clean_standardize
+          notebook_task:
+            notebook_path: "${workspace.file_path}/notebooks/02_clean"
+            base_parameters:
+              quality_threshold: "0.85"
+          timeout_seconds: 1200
+          
+          email_notifications:
+            on_failure:
+              - data-team@company.com
+          
+          depends_on:
+            - task_key: stage_1_extract_apis
+        
+        - task_key: stage_3_transform_gold
+          notebook_task:
+            notebook_path: "${workspace.file_path}/notebooks/03_transform"
+            base_parameters:
+              anomaly_sensitivity: "2.0"
+          timeout_seconds: 1500
+          
+          email_notifications:
+            on_failure:
+              - data-team@company.com
+            on_success:
+              - analytics-team@company.com
+          
+          depends_on:
+            - task_key: stage_2_clean_standardize
+        
+        - task_key: stage_4_quality_validation
+          notebook_task:
+            notebook_path: "${workspace.file_path}/notebooks/04_qa"
+          timeout_seconds: 600
+          
+          depends_on:
+            - task_key: stage_3_transform_gold
