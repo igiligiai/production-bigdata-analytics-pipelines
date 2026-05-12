@@ -1,0 +1,30 @@
+# This is a Databricks asset bundle definition for production_ecommerce_analytics_pipelines.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: production_ecommerce_analytics_pipelines
+  uuid: c54d4af5-1748-4f99-899b-852875a948b6
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-1219432522325719.19.azuredatabricks.net
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-1219432522325719.19.azuredatabricks.net
+      # We explicitly deploy to /Workspace/Users/anthony.igiligi@sii-germany.com to make sure we only have a single copy.
+      root_path: /Workspace/Users/anthony.igiligi@sii-germany.com/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: anthony.igiligi@sii-germany.com
+        level: CAN_MANAGE
