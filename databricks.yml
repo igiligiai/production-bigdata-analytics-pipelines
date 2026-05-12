@@ -17,12 +17,12 @@ targets:
     mode: development
     default: true
     workspace:
-      host: https://adb-1219432522325719.19.azuredatabricks.net
+      host: https://adb-1040672858755634.14.azuredatabricks.net
 
   prod:
     mode: production
     workspace:
-      host: https://adb-1219432522325719.19.azuredatabricks.net
+      host: https://adb-1040672858755634.14.azuredatabricks.net
       # We explicitly deploy to /Workspace/Users/anthony.igiligi@sii-germany.com to make sure we only have a single copy.
       root_path: /Workspace/Users/anthony.igiligi@sii-germany.com/.bundle/${bundle.name}/${bundle.target}
     permissions:
