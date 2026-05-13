@@ -5,6 +5,7 @@
 # Purpose: Fetch data from multiple e-commerce APIs, validate, and 
 # land raw data in DBFS. This is append-only, preserving all historical data.
 
+import json
 from datetime import datetime
 from pyspark.sql import functions as F
 
