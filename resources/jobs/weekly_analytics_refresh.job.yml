@@ -16,5 +16,5 @@ resources:
         - task_key: weekly_analytics
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/03_transform.py
+            notebook_path: ../../src/notebooks/05_weekly_analysis.py
           depends_on: []
