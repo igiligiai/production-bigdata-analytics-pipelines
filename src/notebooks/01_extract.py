@@ -47,6 +47,23 @@ def stock_data_bronze_view(date: str, hourly_data: str) -> None:
 
 # COMMAND ----------
 
+def company_info_bronze_view() -> None:
+    """
+    Create or replace the bronze view for company info.
+    """
+    source_path = f"{RAW_DIR}/company_info/company_info.json"
+    view_name = "bronze.company_info"
+
+    spark.sql(
+        f"""
+        CREATE OR REPLACE VIEW {view_name}
+        AS SELECT * FROM json.`{source_path}`
+        """
+    )
+    print(f"✅ Created view: {view_name} for company info")
+
+# COMMAND ----------
+
 def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> dict:
     """
     Validate the current bronze stock view and persist a lightweight log.
@@ -100,6 +117,8 @@ def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> d
 # COMMAND ----------
 
 stock_data_bronze_view(current_date, hourly_data)
+
+company_info_bronze_view()
 
 # COMMAND ----------
 
