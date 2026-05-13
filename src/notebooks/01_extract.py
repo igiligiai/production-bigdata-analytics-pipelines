@@ -5,166 +5,124 @@
 # Purpose: Fetch data from multiple e-commerce APIs, validate, and 
 # land raw data in DBFS. This is append-only, preserving all historical data.
 
-import requests
-import json
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, TimestampType
+
+# COMMAND ----------
+
+try:
+    CURRENT_DATETIME = dbutils.widgets.get("ProcessDatetime")
+except:
+    CURRENT_DATETIME = datetime.utcnow()
 
 # COMMAND ----------
 
 # Configuration
-CURRENT_DATE = datetime.utcnow().strftime("%Y-%m-%d")
-DBFS_RAW_PATH = f"/dbfs/raw/ecommerce"
+RAW_DIR = "dbfs:/raw/depeap/extract"
+DBFS_RAW_PATH = f"dbfs:/clean/depeap/yfinance"
+current_date = CURRENT_DATETIME.strftime("%Y-%m-%d")
+current_time = CURRENT_DATETIME.strftime("%H:%M:%S")
+hour = CURRENT_DATETIME.strftime("%H")
+hourly_data = f'{hour}_00_00'
+print(f"Current date: {current_date}")
+print(f"Current time: {current_time}, hourly data: {hourly_data}")
 
-# API endpoints
-API_CONFIG = {
-    "fakestore_products": {
-        "url": "https://fakestoreapi.com/products",
-        "source": "fakestore",
-        "table": "products"
-    },
-    "fakestore_carts": {
-        "url": "https://fakestoreapi.com/carts",
-        "source": "fakestore",
-        "table": "carts"
-    },
-    "fakestore_orders": {
-        "url": "https://fakestoreapi.com/orders",
-        "source": "fakestore",
-        "table": "orders"
+# COMMAND ----------
+
+def stock_data_bronze_view(date: str, hourly_data: str) -> None:
+    """
+    Create or replace the bronze view for the current date and hour.
+    """
+    source_path = f"{RAW_DIR}/hourly_data/{date}/{hourly_data}.json"
+    view_name = "bronze.stock_data_hourly"
+
+    spark.sql(
+        f"""
+        CREATE OR REPLACE VIEW {view_name}
+        AS SELECT * FROM json.`{source_path}`
+        """
+    )
+    print(f"✅ Created view: {view_name} for date: {date} and hour: {hourly_data}")
+
+# COMMAND ----------
+
+def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> dict:
+    """
+    Validate the current bronze stock view and persist a lightweight log.
+    """
+    df = spark.table(view_name)
+    record_count = df.count()
+    schema_columns = len(df.columns)
+    null_counts = {
+        column: df.filter(F.col(column).isNull()).count()
+        for column in df.columns
     }
-}
+    failed_checks = []
+
+    if record_count == 0:
+        failed_checks.append("No records found in the currently processed batch")
+
+    validation_report = {
+        "view_name": view_name,
+        "process_date": date,
+        "process_hour": hourly_data,
+        "validated_at": datetime.utcnow().isoformat(),
+        "record_count": record_count,
+        "schema_columns": schema_columns,
+        "columns": df.columns,
+        "null_counts": null_counts,
+        "status": "PASSED" if not failed_checks else "FAILED",
+        "failures": failed_checks,
+    }
+
+    log_path = f"dbfs:/logs/depeap/bronze_validation/{date}/{hourly_data}_stock_data_hourly.json"
+    dbutils.fs.put(log_path, json.dumps(validation_report, indent=2), overwrite=True)
+
+    print("\n" + "=" * 60)
+    print("BRONZE VIEW VALIDATION & LOGGING")
+    print("=" * 60)
+    print(f"View name: {view_name}")
+    print(f"Status: {validation_report['status']}")
+    print(f"Records in current batch: {record_count}")
+    print(f"Schema columns: {schema_columns}")
+    print(f"Validation log written to: {log_path}")
+
+    if failed_checks:
+        for failure in failed_checks:
+            print(f"❌ {failure}")
+    else:
+        print("✅ Bronze view validation passed")
+
+    return validation_report
+
 
 # COMMAND ----------
 
-def extract_from_api(endpoint_config: dict) -> list:
-    """
-    Extract JSON data from REST API with error handling.
-    Returns list of records with metadata.
-    """
-    url = endpoint_config["url"]
-    source = endpoint_config["source"]
-    table_name = endpoint_config["table"]
-    
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Normalize to list
-        if isinstance(data, dict):
-            data = [data]
-        
-        # Add extraction metadata to each record
-        extracted_data = [
-            {
-                **record,
-                "_extracted_at": datetime.utcnow().isoformat(),
-                "_source_api": source,
-                "_table_name": table_name,
-                "_response_code": response.status_code,
-                "_extraction_date": CURRENT_DATE
-            }
-            for record in data
-        ]
-        
-        print(f"✅ Extracted {len(extracted_data)} records from {source}.{table_name}")
-        return extracted_data
-        
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Error extracting from {source}.{table_name}: {str(e)}")
-        # Return empty list to avoid pipeline failure
-        return []
+stock_data_bronze_view(current_date, hourly_data)
 
 # COMMAND ----------
 
-def write_to_bronze(data: list, source: str, table: str) -> None:
-    """
-    Write extracted data to Bronze layer (raw, append-only).
-    Uses Delta Lake for ACID compliance.
-    """
-    if not data:
-        print(f"⚠️  No data to write for {source}.{table}")
-        return
-    
-    # Convert to Spark DataFrame
-    df = spark.createDataFrame(data)
-    
-    # Create table path
-    table_name = f"bronze.raw_{source}_{table}"
-    
-    # Write with merge schema (auto-detect new columns)
-    df.write \
-        .format("delta") \
-        .mode("append") \
-        .option("mergeSchema", "true") \
-        .option("path", f"{DBFS_RAW_PATH}/{source}/{table}/") \
-        .saveAsTable(table_name)
-    
-    print(f"📝 Appended to {table_name}")
-
-# COMMAND ----------
-
-# MAIN EXTRACTION LOGIC
-
-# Step 1: Extract from all configured APIs
-all_extractions = {}
-for endpoint_key, endpoint_config in API_CONFIG.items():
-    print(f"\n{'='*60}")
-    print(f"Extracting: {endpoint_key}")
-    print(f"URL: {endpoint_config['url']}")
-    print(f"{'='*60}")
-    
-    data = extract_from_api(endpoint_config)
-    all_extractions[endpoint_key] = data
-
-# Step 2: Write each extraction to Bronze
-for endpoint_key, endpoint_config in API_CONFIG.items():
-    data = all_extractions[endpoint_key]
-    write_to_bronze(data, endpoint_config["source"], endpoint_config["table"])
 
 # COMMAND ----------
 
 # VALIDATION & LOGGING
 
-extraction_summary = {
-    "execution_date": CURRENT_DATE,
-    "timestamp": datetime.utcnow().isoformat(),
-    "sources": {}
-}
+bronze_validation_report = validate_bronze_stock_view(
+    "bronze.stock_data_hourly",
+    current_date,
+    hourly_data,
+)
 
-for endpoint_key, endpoint_config in API_CONFIG.items():
-    source = endpoint_config["source"]
-    table = endpoint_config["table"]
-    data_count = len(all_extractions[endpoint_key])
-    
-    extraction_summary["sources"][f"{source}.{table}"] = {
-        "record_count": data_count,
-        "status": "success" if data_count > 0 else "no_data"
-    }
-
-# Log to DBFS for audit trail
-log_path = f"/dbfs/logs/extraction/{CURRENT_DATE}_extraction_summary.json"
-dbutils.fs.put(log_path, json.dumps(extraction_summary, indent=2))
-
-print(f"\n{'='*60}")
-print("EXTRACTION SUMMARY")
-print(f"{'='*60}")
-print(json.dumps(extraction_summary, indent=2))
-print(f"\n✅ Extraction completed. Check logs at: {log_path}")
 
 # COMMAND ----------
 
-# OPTIONAL: Quick validation of Bronze tables
+# OPTIONAL: Quick validation of Bronze view
 
 print("\n" + "="*60)
 print("BRONZE LAYER VALIDATION")
 print("="*60)
 
-bronze_tables = ["bronze.raw_fakestore_products", "bronze.raw_fakestore_orders", "bronze.raw_fakestore_carts"]
+bronze_tables = ["bronze.stock_data_hourly"]
 
 for table_name in bronze_tables:
     try:
@@ -173,6 +131,7 @@ for table_name in bronze_tables:
         print(f"\n📊 {table_name}")
         print(f"   Total records: {record_count}")
         print(f"   Schema columns: {len(df.columns)}")
+        print(f"   Validation status: {bronze_validation_report['status']}")
         
         # Show sample
         df.limit(2).display()
