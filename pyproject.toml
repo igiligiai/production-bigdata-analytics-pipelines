@@ -1,5 +1,5 @@
 [project]
-name = "production_ecommerce_analytics_pipelines"
+name = "production_bigdata_analytics_pipelines"
 version = "0.0.1"
 authors = [{ name = "anthony.igiligi@sii-germany.com" }]
 requires-python = ">=3.10,<=3.13"
@@ -29,7 +29,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/production_ecommerce_analytics_pipelines"]
+packages = ["src/production_bigdata_analytics_pipelines"]
 
 [project.scripts]
-main = "production_ecommerce_analytics_pipelines.main:main"
+main = "production_bigdata_analytics_pipelines.main:main"

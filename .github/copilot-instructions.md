@@ -1,4 +1,4 @@
-# Copilot instructions for `production_ecommerce_analytics_pipelines`
+# Copilot instructions for `production_bigdata_analytics_pipelines`
 
 This repository is a Databricks Asset Bundle for a production-style e-commerce analytics pipeline. Keep changes aligned with the existing Bronze → Silver → Gold flow and the current notebook layout in `src/notebooks/`.
 

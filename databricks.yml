@@ -1,7 +1,7 @@
-# This is a Databricks asset bundle definition for production_ecommerce_analytics_pipelines.
+# This is a Databricks asset bundle definition for production_bigdata_analytics_pipelines.
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: production_ecommerce_analytics_pipelines
+  name: production_bigdata_analytics_pipelines
   uuid: c54d4af5-1748-4f99-899b-852875a948b6
 
 include:
