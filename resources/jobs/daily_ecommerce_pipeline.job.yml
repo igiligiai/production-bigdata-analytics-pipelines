@@ -24,7 +24,7 @@ resources:
           
           email_notifications:
             on_failure:
-              - data-team@company.com
+              - anthony.igiligi@gmail.com
           
           depends_on: []
         
@@ -38,7 +38,7 @@ resources:
           
           email_notifications:
             on_failure:
-              - data-team@company.com
+              - anthony.igiligi@gmail.com
           
           depends_on:
             - task_key: stage_1_extract_apis
@@ -53,9 +53,9 @@ resources:
           
           email_notifications:
             on_failure:
-              - data-team@company.com
+              - anthony.igiligi@gmail.com
             on_success:
-              - analytics-team@company.com
+              - anthony.igiligi@gmail.com
           
           depends_on:
             - task_key: stage_2_clean_standardize

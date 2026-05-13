@@ -21,13 +21,13 @@ variables:
         num_workers: 2
         autotermination_minutes: 15
       prod:
-        node_type: Standard_DS4_v2
+        node_type: Standard_D4s_v3
         num_workers: 4
-        autotermination_minutes: 30
+        autotermination_minutes: 5
 
   sql_warehouse_id:
     description: SQL Warehouse ID used by SQL alerts
-    default: /sql/1.0/warehouses/d31f81932da25bdc
+    default: d31f81932da25bdc
 
 targets:
   dev:
