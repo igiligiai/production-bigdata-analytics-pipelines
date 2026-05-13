@@ -5,16 +5,12 @@ resources:
   
   clusters:
     dev_etl:
-      cluster_name: "ecommerce-dev-etl-${variables.environment}"
+      cluster_name: "ecommerce-dev-etl-${var.environment}"
       spark_version: "13.3.x-scala2.12"
-      node_type_id: "${variables.cluster_config.dev.node_type}"
-      driver_node_type_id: "${variables.cluster_config.dev.node_type}"
-      num_workers: ${variables.cluster_config.dev.num_workers}
-      autotermination_minutes: ${variables.cluster_config.dev.autotermination_minutes}
-      
-      aws_attributes:
-        availability: "ON_DEMAND"
-        zone_id: "us-west-2a"
+      node_type_id: "${var.cluster_config.dev.node_type}"
+      driver_node_type_id: "${var.cluster_config.dev.node_type}"
+      num_workers: ${var.cluster_config.dev.num_workers}
+      autotermination_minutes: ${var.cluster_config.dev.autotermination_minutes}
       
       spark_conf:
         "spark.sql.shuffle.partitions": "100"
@@ -24,7 +20,7 @@ resources:
         "spark.databricks.cluster.profile": "singleNode"
         "spark.sql.files.maxPartitionBytes": "1073741824"
       
-      labels:
-        env: "${variables.environment}"
+      custom_tags:
+        env: "${var.environment}"
         team: "data-engineering"
         purpose: "etl-pipeline"

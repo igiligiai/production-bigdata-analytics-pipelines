@@ -7,6 +7,28 @@ bundle:
 include:
   - resources/**/*.yml
 
+variables:
+  environment:
+    description: Deployment environment (dev or prod)
+    default: dev
+
+  cluster_config:
+    description: Cluster sizing and runtime configuration
+    type: complex
+    default:
+      dev:
+        node_type: Standard_DS3_v2
+        num_workers: 2
+        autotermination_minutes: 15
+      prod:
+        node_type: Standard_DS4_v2
+        num_workers: 4
+        autotermination_minutes: 30
+
+  sql_warehouse_id:
+    description: SQL Warehouse ID used by SQL alerts
+    default: REPLACE_WITH_SQL_WAREHOUSE_ID
+
 targets:
   dev:
     # The default target uses 'mode: development' to create a development copy.
@@ -17,6 +39,8 @@ targets:
     default: true
     workspace:
       host: https://adb-1040672858755634.14.azuredatabricks.net
+    variables:
+      environment: dev
 
   prod:
     mode: production
@@ -24,6 +48,5 @@ targets:
       host: https://adb-1040672858755634.14.azuredatabricks.net
       # We explicitly deploy to /Workspace/Users/anthony.igiligi@sii-germany.com to make sure we only have a single copy.
       root_path: /Workspace/Users/anthony.igiligi@sii-germany.com/.bundle/${bundle.name}/${bundle.target}
-    permissions:
-      - user_name: anthony.igiligi@sii-germany.com
-        level: CAN_MANAGE
+    variables:
+      environment: prod

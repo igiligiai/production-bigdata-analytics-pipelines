@@ -5,14 +5,26 @@ resources:
   
   alerts:
     high_volume_anomaly_alert:
-      name: "High Volume Anomaly Alert"
-      query_id: "${resources.queries.volume_anomaly_detection.id}"
-      condition:
-        metric: "ANOMALY_COUNT"
-        operator: ">"
-        value: 5
-      display_options:
-        include_history: true
-      notification_targets:
-        slack:
-          - "#data-alerts"
+      display_name: "High Volume Anomaly Alert"
+      query_text: |
+        SELECT CAST(COUNT(*) AS DOUBLE) AS anomaly_count
+        FROM gold.daily_anomalies
+      warehouse_id: ${var.sql_warehouse_id}
+
+      evaluation:
+        comparison_operator: GREATER_THAN
+        source:
+          name: "anomaly_count"
+          display: "anomaly_count"
+        threshold:
+          value:
+            double_value: 5
+        notification:
+          notify_on_ok: false
+          subscriptions:
+            - user_email: "${workspace.current_user.userName}"
+
+      schedule:
+        pause_status: "UNPAUSED"
+        quartz_cron_schedule: "0 0 9 * * ?"
+        timezone_id: "Europe/Berlin"

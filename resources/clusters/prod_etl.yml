@@ -3,14 +3,10 @@ resources:
     prod_etl:
       cluster_name: "ecommerce-prod-etl"
       spark_version: "13.3.x-scala2.12"
-      node_type_id: "${variables.cluster_config.prod.node_type}"
-      driver_node_type_id: "${variables.cluster_config.prod.node_type}"
-      num_workers: ${variables.cluster_config.prod.num_workers}
-      autotermination_minutes: ${variables.cluster_config.prod.autotermination_minutes}
-      
-      aws_attributes:
-        availability: "SPOT"
-        zone_id: "us-west-2a"
+      node_type_id: "${var.cluster_config.prod.node_type}"
+      driver_node_type_id: "${var.cluster_config.prod.node_type}"
+      num_workers: ${var.cluster_config.prod.num_workers}
+      autotermination_minutes: ${var.cluster_config.prod.autotermination_minutes}
       
       spark_conf:
         "spark.sql.shuffle.partitions": "200"
@@ -20,7 +16,7 @@ resources:
         "spark.dynamodb.throughput.read.percent": "0.5"
         "spark.sql.files.maxPartitionBytes": "1073741824"
       
-      labels:
+      custom_tags:
         env: "prod"
         team: "data-engineering"
         purpose: "etl-pipeline"
