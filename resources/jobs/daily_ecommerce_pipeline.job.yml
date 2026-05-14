@@ -14,7 +14,7 @@ resources:
 
       tasks:
         - task_key: stage_1_extract_stock_data
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/extract_stock_data.py
             base_parameters:
@@ -29,7 +29,7 @@ resources:
           depends_on: []
 
         - task_key: stage_1_extract_company_info
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/extract_company_info.py
             base_parameters:
@@ -44,7 +44,7 @@ resources:
           depends_on: []
 
         - task_key: stage_2_clean_hourly_data
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/clean_hourly_data.py
           timeout_seconds: 1200
@@ -57,7 +57,7 @@ resources:
             - task_key: stage_1_extract_stock_data
 
         - task_key: stage_2_clean_company_info
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/clean_company_info.py
           timeout_seconds: 1200
@@ -70,7 +70,7 @@ resources:
             - task_key: stage_1_extract_company_info
 
         - task_key: stage_3_gold_market_summary
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_market_summary.sql
           timeout_seconds: 900
@@ -84,7 +84,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_sector_performance
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_sector_performance.sql
           timeout_seconds: 900
@@ -98,7 +98,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_best_performing_today
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_best_performing_today.sql
           timeout_seconds: 900
@@ -112,7 +112,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_worst_performing_21d
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_worst_performing_21d.sql
           timeout_seconds: 900
@@ -126,7 +126,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_most_volatile
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_most_volatile.sql
           timeout_seconds: 900
@@ -140,7 +140,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_volume_anomalies
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_volume_anomalies.sql
           timeout_seconds: 900
@@ -154,7 +154,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_52_week_highs_lows
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_52_week_highs_lows.sql
           timeout_seconds: 900
@@ -168,7 +168,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_3_gold_price_analytics
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/gold/gold_price_analytics.sql
           timeout_seconds: 900
@@ -182,7 +182,7 @@ resources:
             - task_key: stage_2_clean_company_info
 
         - task_key: stage_4_quality_validation
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/adhoc/quality_assurance.py
           timeout_seconds: 600

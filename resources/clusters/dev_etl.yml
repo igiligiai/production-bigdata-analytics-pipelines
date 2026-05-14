@@ -13,11 +13,11 @@ resources:
       autotermination_minutes: ${var.cluster_config.dev.autotermination_minutes}
       
       spark_conf:
-        "spark.sql.shuffle.partitions": "100"
+        "spark.sql.shuffle.partitions": "200"
         "spark.databricks.delta.schema.autoMerge.enabled": "true"
         "spark.sql.adaptive.enabled": "true"
         "spark.sql.adaptive.skewJoin.enabled": "true"
-        "spark.databricks.cluster.profile": "singleNode"
+        "spark.dynamodb.throughput.read.percent": "0.5"
         "spark.sql.files.maxPartitionBytes": "1073741824"
       
       custom_tags:
