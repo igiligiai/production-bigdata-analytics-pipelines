@@ -3,6 +3,8 @@
 # STAGE 3H: GOLD PRICE ANALYTICS
 # ====================================================================
 
+from pyspark.sql import functions as F
+
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
@@ -14,58 +16,59 @@ print(f"\n{'=' * 60}")
 print("GOLD STAGE: gold_price_analytics")
 print(f"{'=' * 60}\n")
 
-gold_price_analytics = spark.sql(
-    """
-    WITH market AS (
-      SELECT * FROM gold.gold_market_summary
+market = spark.table("gold.gold_market_summary")
+
+gold_price_analytics = (
+    market.where(F.col("current_price").isNotNull())
+    .where(F.col("previous_close").isNotNull())
+    .where(F.col("previous_close") > 0)
+    .where(F.col("current_price") > 0)
+    .where(F.col("fifty_two_week_high") > 0)
+    .where(F.col("fifty_two_week_low") > 0)
+    .where(F.col("fifty_two_week_high") > F.col("fifty_two_week_low"))
+    .select(
+        F.col("symbol"),
+        F.col("company_name"),
+        F.col("sector"),
+        F.col("industry"),
+        F.col("current_price"),
+        F.col("previous_close"),
+        F.round(F.col("current_price") - F.col("previous_close"), 2).alias("price_change"),
+        F.round(
+            (F.col("current_price") - F.col("previous_close"))
+            / F.when(F.col("previous_close") != 0, F.col("previous_close"))
+            * 100,
+            2,
+        ).alias("price_change_pct"),
+        F.col("fifty_day_average"),
+        F.col("two_hundred_day_average"),
+        F.round(F.col("current_price") - F.col("fifty_day_average"), 2).alias("vs_50d_avg"),
+        F.round(F.col("current_price") - F.col("two_hundred_day_average"), 2).alias("vs_200d_avg"),
+        F.when(
+            (F.col("current_price") > F.col("fifty_day_average"))
+            & (F.col("fifty_day_average") > F.col("two_hundred_day_average")),
+            F.lit("BULLISH"),
+        )
+        .when(
+            (F.col("current_price") < F.col("fifty_day_average"))
+            & (F.col("fifty_day_average") < F.col("two_hundred_day_average")),
+            F.lit("BEARISH"),
+        )
+        .otherwise(F.lit("NEUTRAL"))
+        .alias("trend_signal"),
+        F.col("fifty_two_week_low"),
+        F.col("fifty_two_week_high"),
+        F.round(
+            (F.col("current_price") - F.col("fifty_two_week_low"))
+            / F.when((F.col("fifty_two_week_high") - F.col("fifty_two_week_low")) != 0, F.col("fifty_two_week_high") - F.col("fifty_two_week_low"))
+            * 100,
+            2,
+        ).alias("range_52w_pct"),
+        F.col("volume"),
+        F.col("market_cap"),
+        F.col("price_extracted_at"),
     )
-    SELECT
-      symbol,
-      company_name,
-      sector,
-      industry,
-      current_price,
-      previous_close,
-
-      ROUND(current_price - previous_close, 2) AS price_change,
-      ROUND(
-        (current_price - previous_close) / NULLIF(previous_close, 0) * 100,
-        2
-      ) AS price_change_pct,
-
-      fifty_day_average,
-      two_hundred_day_average,
-      ROUND(current_price - fifty_day_average, 2) AS vs_50d_avg,
-      ROUND(current_price - two_hundred_day_average, 2) AS vs_200d_avg,
-      CASE
-        WHEN current_price > fifty_day_average
-          AND fifty_day_average > two_hundred_day_average THEN 'BULLISH'
-        WHEN current_price < fifty_day_average
-          AND fifty_day_average < two_hundred_day_average THEN 'BEARISH'
-        ELSE 'NEUTRAL'
-      END AS trend_signal,
-
-      fifty_two_week_low,
-      fifty_two_week_high,
-      ROUND(
-        (current_price - fifty_two_week_low)
-        / NULLIF(fifty_two_week_high - fifty_two_week_low, 0) * 100,
-        2
-      ) AS range_52w_pct,
-
-      volume,
-      market_cap,
-      price_extracted_at
-    FROM market
-    WHERE current_price IS NOT NULL
-      AND previous_close IS NOT NULL
-      AND previous_close > 0
-      AND current_price > 0
-      AND fifty_two_week_high > 0
-      AND fifty_two_week_low > 0
-      AND fifty_two_week_high > fifty_two_week_low
-    ORDER BY symbol
-    """
+    .orderBy("symbol")
 )
 
 write_gold_table(gold_price_analytics, "gold.gold_price_analytics")

@@ -3,6 +3,9 @@
 # STAGE 3G: GOLD 52-WEEK HIGHS/LOWS
 # ====================================================================
 
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
@@ -14,52 +17,60 @@ print(f"\n{'=' * 60}")
 print("GOLD STAGE: gold_52_week_highs_lows")
 print(f"{'=' * 60}\n")
 
-gold_52_week_highs_lows = spark.sql(
-    """
-    WITH latest_prices AS (
-      SELECT
-        symbol,
-        current_price,
-        fifty_two_week_high,
-        fifty_two_week_low,
-        extracted_at,
-        ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY extracted_at DESC) AS rn
-      FROM silver.silver_hourly_prices
-    ),
-    latest_company AS (
-      SELECT
-        symbol,
-        company_name,
-        sector,
-        ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY extracted_at DESC) AS rn
-      FROM silver.silver_company_info
+price_window = Window.partitionBy("symbol").orderBy(F.col("extracted_at").desc())
+company_window = Window.partitionBy("symbol").orderBy(F.col("extracted_at").desc())
+
+latest_prices = (
+    spark.table("silver.silver_hourly_prices")
+    .select(
+        F.col("symbol"),
+        F.col("current_price"),
+        F.col("fifty_two_week_high"),
+        F.col("fifty_two_week_low"),
+        F.col("extracted_at"),
+        F.row_number().over(price_window).alias("rn"),
     )
-    SELECT
-      p.symbol,
-      c.company_name,
-      c.sector,
-      ROUND(
-        (p.current_price - p.fifty_two_week_low)
-        / NULLIF(p.fifty_two_week_high - p.fifty_two_week_low, 0) * 100,
-        2
-      ) AS range_position_pct,
-      CASE
-        WHEN p.current_price >= p.fifty_two_week_high * 0.95 THEN 'NEAR_52W_HIGH'
-        WHEN p.current_price <= p.fifty_two_week_low * 1.05 THEN 'NEAR_52W_LOW'
-        ELSE 'MID_RANGE'
-      END AS proximity_signal
-    FROM latest_prices p
-    INNER JOIN latest_company c
-      ON p.symbol = c.symbol
-      AND c.rn = 1
-    WHERE p.rn = 1
-      AND p.current_price IS NOT NULL
-      AND p.current_price > 0
-      AND p.fifty_two_week_high > 0
-      AND p.fifty_two_week_low > 0
-      AND p.fifty_two_week_high > p.fifty_two_week_low
-    ORDER BY range_position_pct DESC, p.symbol
-    """
+    .where(F.col("rn") == 1)
+)
+
+latest_company = (
+    spark.table("silver.silver_company_info")
+    .select(
+        F.col("symbol"),
+        F.col("company_name"),
+        F.col("sector"),
+        F.row_number().over(company_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+)
+
+gold_52_week_highs_lows = (
+    latest_prices.alias("p")
+    .join(latest_company.alias("c"), on="symbol", how="inner")
+    .where(F.col("p.current_price").isNotNull())
+    .where(F.col("p.current_price") > 0)
+    .where(F.col("p.fifty_two_week_high") > 0)
+    .where(F.col("p.fifty_two_week_low") > 0)
+    .where(F.col("p.fifty_two_week_high") > F.col("p.fifty_two_week_low"))
+    .select(
+        F.col("p.symbol"),
+        F.col("c.company_name"),
+        F.col("c.sector"),
+        F.round(
+            (F.col("p.current_price") - F.col("p.fifty_two_week_low"))
+            / F.when(
+                (F.col("p.fifty_two_week_high") - F.col("p.fifty_two_week_low")) != 0,
+                F.col("p.fifty_two_week_high") - F.col("p.fifty_two_week_low"),
+            )
+            * 100,
+            2,
+        ).alias("range_position_pct"),
+        F.when(F.col("p.current_price") >= F.col("p.fifty_two_week_high") * F.lit(0.95), F.lit("NEAR_52W_HIGH"))
+        .when(F.col("p.current_price") <= F.col("p.fifty_two_week_low") * F.lit(1.05), F.lit("NEAR_52W_LOW"))
+        .otherwise(F.lit("MID_RANGE"))
+        .alias("proximity_signal"),
+    )
+    .orderBy(F.col("range_position_pct").desc(), F.col("p.symbol"))
 )
 
 write_gold_table(gold_52_week_highs_lows, "gold.gold_52_week_highs_lows")

@@ -3,6 +3,9 @@
 # STAGE 3D: GOLD WORST PERFORMING 21D
 # ====================================================================
 
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
@@ -14,50 +17,98 @@ print(f"\n{'=' * 60}")
 print("GOLD STAGE: gold_worst_performing_21d")
 print(f"{'=' * 60}\n")
 
-gold_worst_performing_21d = spark.sql(
-    """
-    WITH daily_prices AS (
-      SELECT
-        symbol,
-        CAST(extracted_at AS DATE) AS price_date,
-        MAX_BY(current_price, extracted_at) AS closing_price,
-        MAX_BY(previous_close, extracted_at) AS previous_close
-      FROM silver.silver_hourly_prices
-      WHERE extracted_at >= date_trunc('day', current_date() - interval 21 day)
-      GROUP BY symbol, CAST(extracted_at AS DATE)
-    ),
-    price_endpoints AS (
-      SELECT
-        symbol,
-        MAX_BY(closing_price, price_date) AS latest_price,
-        MIN_BY(closing_price, price_date) AS earliest_price,
-        MIN(price_date) AS period_start,
-        MAX(price_date) AS period_end,
-        COUNT(DISTINCT price_date) AS trading_days
-      FROM daily_prices
-      GROUP BY symbol
-      HAVING COUNT(DISTINCT price_date) >= 2
+price_window = Window.partitionBy("symbol", "price_date").orderBy(F.col("extracted_at").desc())
+earliest_window = Window.partitionBy("symbol").orderBy(F.col("price_date").asc())
+latest_window = Window.partitionBy("symbol").orderBy(F.col("price_date").desc())
+company_window = Window.partitionBy("symbol").orderBy(F.col("extracted_at").desc())
+start_date = F.expr("date_trunc('day', current_date() - interval 21 day)")
+
+daily_prices = (
+    spark.table("silver.silver_hourly_prices")
+    .withColumn("price_date", F.to_date("extracted_at"))
+    .where(F.col("extracted_at") >= start_date)
+    .select(
+        F.col("symbol"),
+        F.col("price_date"),
+        F.col("current_price").alias("closing_price"),
+        F.col("previous_close"),
+        F.col("extracted_at"),
+        F.row_number().over(price_window).alias("rn"),
     )
-    SELECT
-      c.symbol,
-      c.company_name,
-      c.sector,
-      p.period_start,
-      p.period_end,
-      p.trading_days,
-      p.earliest_price,
-      p.latest_price,
-      ROUND(p.latest_price - p.earliest_price, 2) AS price_change,
-      ROUND(
-        (p.latest_price - p.earliest_price) / NULLIF(p.earliest_price, 0) * 100,
-        2
-      ) AS price_change_pct
-    FROM price_endpoints p
-    JOIN silver.silver_company_info c
-      ON p.symbol = c.symbol
-    ORDER BY price_change_pct ASC, price_change ASC
-    LIMIT 10
-    """
+    .where(F.col("rn") == 1)
+)
+
+earliest_prices = (
+    daily_prices.select(
+        "symbol",
+        "price_date",
+        "closing_price",
+        F.row_number().over(earliest_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+    .select(
+        "symbol",
+        F.col("price_date").alias("period_start"),
+        F.col("closing_price").alias("earliest_price"),
+    )
+)
+
+latest_prices = (
+    daily_prices.select(
+        "symbol",
+        "price_date",
+        "closing_price",
+        F.row_number().over(latest_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+    .select(
+        "symbol",
+        F.col("price_date").alias("period_end"),
+        F.col("closing_price").alias("latest_price"),
+    )
+)
+
+trading_days = daily_prices.groupBy("symbol").agg(F.countDistinct("price_date").alias("trading_days"))
+
+latest_company = (
+    spark.table("silver.silver_company_info")
+    .select(
+        F.col("symbol"),
+        F.col("company_name"),
+        F.col("sector"),
+        F.row_number().over(company_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+)
+
+price_endpoints = (
+    earliest_prices.join(latest_prices, on="symbol", how="inner")
+    .join(trading_days, on="symbol", how="inner")
+    .where(F.col("trading_days") >= 2)
+)
+
+gold_worst_performing_21d = (
+    price_endpoints.alias("p")
+    .join(latest_company.alias("c"), on="symbol", how="inner")
+    .select(
+        F.col("c.symbol"),
+        F.col("c.company_name"),
+        F.col("c.sector"),
+        F.col("p.period_start"),
+        F.col("p.period_end"),
+        F.col("p.trading_days"),
+        F.col("p.earliest_price"),
+        F.col("p.latest_price"),
+        F.round(F.col("p.latest_price") - F.col("p.earliest_price"), 2).alias("price_change"),
+        F.round(
+            (F.col("p.latest_price") - F.col("p.earliest_price"))
+            / F.when(F.col("p.earliest_price") != 0, F.col("p.earliest_price"))
+            * 100,
+            2,
+        ).alias("price_change_pct"),
+    )
+    .orderBy(F.col("price_change_pct").asc(), F.col("price_change").asc())
+    .limit(10)
 )
 
 write_gold_table(gold_worst_performing_21d, "gold.gold_worst_performing_21d")

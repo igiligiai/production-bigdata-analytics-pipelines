@@ -3,6 +3,8 @@
 # STAGE 3B: GOLD SECTOR PERFORMANCE
 # ====================================================================
 
+from pyspark.sql import functions as F
+
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
@@ -14,28 +16,39 @@ print(f"\n{'=' * 60}")
 print("GOLD STAGE: gold_sector_performance")
 print(f"{'=' * 60}\n")
 
-gold_sector_performance = spark.sql(
-    """
-    WITH market AS (
-      SELECT * FROM gold.gold_market_summary
-      WHERE sector IS NOT NULL
+market = spark.table("gold.gold_market_summary").where(F.col("sector").isNotNull())
+
+gold_sector_performance = (
+    market.groupBy("sector")
+    .agg(
+        F.count("*").alias("num_companies"),
+        F.sum("market_cap").alias("total_market_cap"),
+        F.round(F.avg("current_price"), 2).alias("avg_price"),
+        F.round(F.avg("trailing_pe"), 2).alias("avg_trailing_pe"),
+        F.round(F.avg("forward_pe"), 2).alias("avg_forward_pe"),
+        F.round(F.avg("profit_margins"), 4).alias("avg_profit_margin"),
+        F.round(F.avg("gross_margins"), 4).alias("avg_gross_margin"),
+        F.round(F.avg("dividend_yield"), 4).alias("avg_dividend_yield"),
+        F.sum("volume").alias("total_volume"),
+        F.sum(F.col("current_price") * F.col("volume")).alias("price_volume_sum"),
     )
-    SELECT
-      sector,
-      COUNT(*) AS num_companies,
-      SUM(market_cap) AS total_market_cap,
-      ROUND(AVG(current_price), 2) AS avg_price,
-      ROUND(AVG(trailing_pe), 2) AS avg_trailing_pe,
-      ROUND(AVG(forward_pe), 2) AS avg_forward_pe,
-      ROUND(AVG(profit_margins), 4) AS avg_profit_margin,
-      ROUND(AVG(gross_margins), 4) AS avg_gross_margin,
-      ROUND(AVG(dividend_yield), 4) AS avg_dividend_yield,
-      SUM(volume) AS total_volume,
-      ROUND(SUM(current_price * volume) / NULLIF(SUM(volume), 0), 2) AS vwap
-    FROM market
-    GROUP BY sector
-    ORDER BY total_market_cap DESC, sector
-    """
+    .select(
+        "sector",
+        "num_companies",
+        "total_market_cap",
+        "avg_price",
+        "avg_trailing_pe",
+        "avg_forward_pe",
+        "avg_profit_margin",
+        "avg_gross_margin",
+        "avg_dividend_yield",
+        "total_volume",
+        F.round(
+            F.when(F.col("total_volume") != 0, F.col("price_volume_sum") / F.col("total_volume")),
+            2,
+        ).alias("vwap"),
+    )
+    .orderBy(F.col("total_market_cap").desc(), F.col("sector"))
 )
 
 write_gold_table(gold_sector_performance, "gold.gold_sector_performance")

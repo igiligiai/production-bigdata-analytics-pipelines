@@ -3,6 +3,9 @@
 # STAGE 3F: GOLD VOLUME ANOMALIES
 # ====================================================================
 
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
@@ -14,59 +17,89 @@ print(f"\n{'=' * 60}")
 print("GOLD STAGE: gold_volume_anomalies")
 print(f"{'=' * 60}\n")
 
-gold_volume_anomalies = spark.sql(
-    """
-    WITH daily_volume AS (
-      SELECT
-        symbol,
-        CAST(extracted_at AS DATE) AS price_date,
-        MAX_BY(volume, extracted_at) AS daily_volume
-      FROM silver.silver_hourly_prices
-      WHERE extracted_at >= date_trunc('day', current_date() - interval 21 day)
-        AND volume > 0
-      GROUP BY symbol, CAST(extracted_at AS DATE)
-    ),
-    volume_stats AS (
-      SELECT
-        symbol,
-        COUNT(DISTINCT price_date) AS trading_days,
-        AVG(daily_volume) AS avg_volume,
-        STDDEV(daily_volume) AS volume_stddev
-      FROM daily_volume
-      WHERE price_date < date_trunc('day', current_date())
-      GROUP BY symbol
-      HAVING COUNT(DISTINCT price_date) >= 5
-    ),
-    today_volume AS (
-      SELECT
-        symbol,
-        MAX_BY(volume, extracted_at) AS today_volume
-      FROM silver.silver_hourly_prices
-      WHERE extracted_at >= date_trunc('day', current_date())
-        AND extracted_at < date_trunc('day', current_date() + interval 1 day)
-        AND volume > 0
-      GROUP BY symbol
+volume_window = Window.partitionBy("symbol", "price_date").orderBy(F.col("extracted_at").desc())
+today_window = Window.partitionBy("symbol").orderBy(F.col("extracted_at").desc())
+company_window = Window.partitionBy("symbol").orderBy(F.col("extracted_at").desc())
+start_21d = F.expr("date_trunc('day', current_date() - interval 21 day)")
+start_today = F.date_trunc("day", F.current_date())
+end_today = F.expr("date_trunc('day', current_date()) + interval 1 day")
+
+daily_volume = (
+    spark.table("silver.silver_hourly_prices")
+    .withColumn("price_date", F.to_date("extracted_at"))
+    .where(F.col("extracted_at") >= start_21d)
+    .where(F.col("volume") > 0)
+    .select(
+        F.col("symbol"),
+        F.col("price_date"),
+        F.col("volume"),
+        F.col("extracted_at"),
+        F.row_number().over(volume_window).alias("rn"),
     )
-    SELECT
-      c.symbol,
-      c.company_name,
-      c.sector,
-      t.today_volume,
-      ROUND(s.avg_volume, 0) AS avg_volume_21d,
-      ROUND(t.today_volume / NULLIF(s.avg_volume, 0), 2) AS volume_ratio,
-      CASE
-        WHEN s.volume_stddev IS NULL OR s.volume_stddev = 0 THEN 0
-        ELSE ROUND((t.today_volume - s.avg_volume) / s.volume_stddev, 2)
-      END AS volume_z_score,
-      s.trading_days
-    FROM today_volume t
-    JOIN volume_stats s
-      ON t.symbol = s.symbol
-    JOIN silver.silver_company_info c
-      ON t.symbol = c.symbol
-    WHERE t.today_volume > s.avg_volume * 1.5
-    ORDER BY volume_ratio DESC, today_volume DESC
-    """
+    .where(F.col("rn") == 1)
+    .select("symbol", "price_date", F.col("volume").alias("daily_volume"))
+)
+
+volume_stats = (
+    daily_volume.where(F.col("price_date") < F.current_date())
+    .groupBy("symbol")
+    .agg(
+        F.countDistinct("price_date").alias("trading_days"),
+        F.avg("daily_volume").alias("avg_volume"),
+        F.stddev("daily_volume").alias("volume_stddev"),
+    )
+    .where(F.col("trading_days") >= 5)
+)
+
+today_volume = (
+    spark.table("silver.silver_hourly_prices")
+    .where(F.col("extracted_at") >= start_today)
+    .where(F.col("extracted_at") < end_today)
+    .where(F.col("volume") > 0)
+    .select(
+        F.col("symbol"),
+        F.col("volume"),
+        F.col("extracted_at"),
+        F.row_number().over(today_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+    .select("symbol", F.col("volume").alias("today_volume"))
+)
+
+latest_company = (
+    spark.table("silver.silver_company_info")
+    .select(
+        F.col("symbol"),
+        F.col("company_name"),
+        F.col("sector"),
+        F.row_number().over(company_window).alias("rn"),
+    )
+    .where(F.col("rn") == 1)
+)
+
+gold_volume_anomalies = (
+    today_volume.alias("t")
+    .join(volume_stats.alias("s"), on="symbol", how="inner")
+    .join(latest_company.alias("c"), on="symbol", how="inner")
+    .where(F.col("t.today_volume") > F.col("s.avg_volume") * F.lit(1.5))
+    .select(
+        F.col("c.symbol"),
+        F.col("c.company_name"),
+        F.col("c.sector"),
+        F.col("t.today_volume"),
+        F.round(F.col("s.avg_volume"), 0).alias("avg_volume_21d"),
+        F.round(F.col("t.today_volume") / F.when(F.col("s.avg_volume") != 0, F.col("s.avg_volume")), 2).alias(
+            "volume_ratio"
+        ),
+        F.when(
+            F.col("s.volume_stddev").isNull() | (F.col("s.volume_stddev") == 0),
+            F.lit(0),
+        ).otherwise(
+            F.round((F.col("t.today_volume") - F.col("s.avg_volume")) / F.col("s.volume_stddev"), 2)
+        ).alias("volume_z_score"),
+        F.col("s.trading_days"),
+    )
+    .orderBy(F.col("volume_ratio").desc(), F.col("today_volume").desc())
 )
 
 write_gold_table(gold_volume_anomalies, "gold.gold_volume_anomalies")
