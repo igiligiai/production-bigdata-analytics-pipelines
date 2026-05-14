@@ -106,7 +106,20 @@ class DataQualityValidator:
             if out_of_range > 0:
                 self.failed_checks.append(f"Column '{column}': {out_of_range} values > {max_val}")
                 passed = False
-        
+
+        return passed
+
+    def check_allowed_values(self, column: str, allowed_values: list) -> bool:
+        """Validate a column only contains approved values"""
+        invalid_count = self.df.filter(~F.col(column).isin(allowed_values)).count()
+        passed = invalid_count == 0
+        self.checks[f"allowed_values_{column}"] = {
+            "passed": passed,
+            "invalid_count": invalid_count,
+            "allowed_values": allowed_values,
+        }
+        if not passed:
+            self.failed_checks.append(f"Column '{column}' has {invalid_count} invalid values")
         return passed
     
     def check_quality_flag_distribution(self, quality_col: str, ok_threshold: float = 0.85) -> bool:
@@ -267,51 +280,79 @@ print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['tot
 print(f"\n{'─'*70}\n")
 print("GOLD LAYER VALIDATION\n")
 
-# Gold: Daily Revenue
-print("🔍 gold.daily_revenue_by_category")
-gold_revenue_validator = DataQualityValidator("gold.daily_revenue_by_category")
-gold_revenue_validator.check_record_count(min_records=1)
-gold_revenue_validator.check_non_null_columns(["order_date", "category", "total_revenue"])
-gold_revenue_validator.check_value_ranges("total_revenue", min_val=0)
-summary = gold_revenue_validator.summary()
+# Gold: Market Summary
+print("🔍 gold.gold_market_summary")
+gold_market_summary_validator = DataQualityValidator("gold.gold_market_summary")
+gold_market_summary_validator.check_record_count(min_records=1)
+gold_market_summary_validator.check_non_null_columns(["symbol", "company_name", "sector", "current_price"])
+gold_market_summary_validator.check_no_duplicates(["symbol"])
+summary = gold_market_summary_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
-# Gold: Customer 360
-print("\n🔍 gold.customer_360_rfm")
-gold_customer_validator = DataQualityValidator("gold.customer_360_rfm")
-gold_customer_validator.check_record_count(min_records=1)
-gold_customer_validator.check_non_null_columns(["user_id", "rfm_segment"])
-gold_customer_validator.check_value_ranges("r_score", min_val=1, max_val=5)
-gold_customer_validator.check_value_ranges("f_score", min_val=1, max_val=5)
-gold_customer_validator.check_value_ranges("m_score", min_val=1, max_val=5)
-summary = gold_customer_validator.summary()
+# Gold: Sector Performance
+print("\n🔍 gold.gold_sector_performance")
+gold_sector_performance_validator = DataQualityValidator("gold.gold_sector_performance")
+gold_sector_performance_validator.check_record_count(min_records=1)
+gold_sector_performance_validator.check_non_null_columns(["sector", "num_companies", "total_market_cap", "vwap"])
+gold_sector_performance_validator.check_no_duplicates(["sector"])
+summary = gold_sector_performance_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
-# Gold: Product Performance
-print("\n🔍 gold.product_performance_metrics")
-gold_products_validator = DataQualityValidator("gold.product_performance_metrics")
-gold_products_validator.check_record_count(min_records=1)
-gold_products_validator.check_non_null_columns(["product_id"])
-gold_products_validator.check_value_ranges("performance_score", min_val=0)
-summary = gold_products_validator.summary()
+# Gold: Best Performing Today
+print("\n🔍 gold.gold_best_performing_today")
+gold_best_validator = DataQualityValidator("gold.gold_best_performing_today")
+gold_best_validator.check_record_count(min_records=1)
+gold_best_validator.check_non_null_columns(["symbol", "company_name", "sector", "extracted_at_date", "extracted_at_time", "daily_gain_price", "daily_gain_percentage"])
+gold_best_validator.check_no_duplicates(["symbol"])
+summary = gold_best_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
-# Gold: Category Insights
-print("\n🔍 gold.category_insights")
-gold_category_validator = DataQualityValidator("gold.category_insights")
-gold_category_validator.check_record_count(min_records=1)
-gold_category_validator.check_non_null_columns(["category"])
-summary = gold_category_validator.summary()
+# Gold: Worst Performing 21d
+print("\n🔍 gold.gold_worst_performing_21d")
+gold_worst_validator = DataQualityValidator("gold.gold_worst_performing_21d")
+gold_worst_validator.check_record_count(min_records=1)
+gold_worst_validator.check_non_null_columns(["symbol", "company_name", "sector", "period_start", "period_end", "trading_days", "price_change", "price_change_pct"])
+gold_worst_validator.check_no_duplicates(["symbol"])
+summary = gold_worst_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
-# Gold: Anomalies
-print("\n🔍 gold.daily_anomalies")
-gold_anomalies_validator = DataQualityValidator("gold.daily_anomalies")
-# Anomalies may be empty (good sign)
-gold_anomalies_validator.check_record_count(min_records=0)
-summary = gold_anomalies_validator.summary()
-anomaly_count = spark.table("gold.daily_anomalies").count()
-print(f"   Status: {summary['status']} | Anomalies detected: {anomaly_count}")
+# Gold: Most Volatile
+print("\n🔍 gold.gold_most_volatile")
+gold_volatile_validator = DataQualityValidator("gold.gold_most_volatile")
+gold_volatile_validator.check_record_count(min_records=1)
+gold_volatile_validator.check_non_null_columns(["symbol", "company_name", "sector", "avg_intraday_range_pct", "max_intraday_range_pct", "coefficient_of_variation"])
+gold_volatile_validator.check_no_duplicates(["symbol"])
+summary = gold_volatile_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+
+# Gold: Volume Anomalies
+print("\n🔍 gold.gold_volume_anomalies")
+gold_volume_validator = DataQualityValidator("gold.gold_volume_anomalies")
+gold_volume_validator.check_record_count(min_records=0)
+gold_volume_validator.check_non_null_columns(["symbol", "company_name", "sector", "today_volume", "avg_volume_21d", "volume_ratio"])
+gold_volume_validator.check_no_duplicates(["symbol"])
+summary = gold_volume_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+
+# Gold: 52 Week Highs / Lows
+print("\n🔍 gold.gold_52_week_highs_lows")
+gold_range_validator = DataQualityValidator("gold.gold_52_week_highs_lows")
+gold_range_validator.check_record_count(min_records=1)
+gold_range_validator.check_non_null_columns(["symbol", "company_name", "sector", "range_position_pct", "proximity_signal"])
+gold_range_validator.check_no_duplicates(["symbol"])
+gold_range_validator.check_allowed_values("proximity_signal", ["NEAR_52W_HIGH", "MID_RANGE", "NEAR_52W_LOW"])
+summary = gold_range_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+
+# Gold: Price Analytics
+print("\n🔍 gold.gold_price_analytics")
+gold_price_validator = DataQualityValidator("gold.gold_price_analytics")
+gold_price_validator.check_record_count(min_records=1)
+gold_price_validator.check_non_null_columns(["symbol", "price_change_pct", "trend_signal", "range_52w_pct"])
+gold_price_validator.check_no_duplicates(["symbol"])
+gold_price_validator.check_allowed_values("trend_signal", ["BULLISH", "BEARISH", "NEUTRAL"])
+summary = gold_price_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
 # ====================================================================
 # CROSS-TABLE VALIDATION
@@ -328,24 +369,22 @@ print("🔗 Referential Integrity: Orders → Products")
 orders_with_products = silver_orders.select("product_ids").collect()
 print(f"   Orders referencing products: {len(orders_with_products)}")
 
-# Check: Silver products should be superset of Gold products
-gold_products = spark.table("gold.product_performance_metrics")
-silver_product_count = silver_products.count()
-gold_product_count = gold_products.count()
+# Check: Gold market summary symbols should exist in silver hourly prices
+gold_market_summary = spark.table("gold.gold_market_summary")
+silver_hourly_prices = spark.table("silver.silver_hourly_prices")
 
-print(f"\n🔗 Product Lineage: Silver → Gold")
-print(f"   Silver products: {silver_product_count}")
-print(f"   Gold products analyzed: {gold_product_count}")
+print(f"\n🔗 Market Snapshot Lineage: Silver → Gold")
+print(f"   Silver price rows: {silver_hourly_prices.count()}")
+print(f"   Gold market snapshot rows: {gold_market_summary.count()}")
 
-# All gold products should come from silver
-gold_product_ids = set([row[0] for row in gold_products.select("product_id").collect()])
-silver_product_ids = set([row[0] for row in silver_products.select("product_id").collect()])
+gold_symbols = set([row[0] for row in gold_market_summary.select("symbol").collect()])
+silver_symbols = set([row[0] for row in silver_hourly_prices.select("symbol").distinct().collect()])
 
-orphan_gold_products = gold_product_ids - silver_product_ids
-if orphan_gold_products:
-    print(f"   ⚠️  Found {len(orphan_gold_products)} Gold products not in Silver!")
+orphan_gold_symbols = gold_symbols - silver_symbols
+if orphan_gold_symbols:
+    print(f"   ⚠️  Found {len(orphan_gold_symbols)} Gold market symbols not in Silver!")
 else:
-    print(f"   ✅ All Gold products exist in Silver (referential integrity)")
+    print(f"   ✅ All Gold market symbols exist in Silver (referential integrity)")
 
 # ====================================================================
 # DATA VOLUME TREND
@@ -358,13 +397,22 @@ tables_stats = []
 for table_name in [
     "bronze.raw_fakestore_products",
     "silver.products_cleaned",
-    "gold.product_performance_metrics",
-    "gold.daily_revenue_by_category",
-    "gold.customer_360_rfm"
+    "gold.gold_market_summary",
+    "gold.gold_sector_performance",
+    "gold.gold_best_performing_today",
+    "gold.gold_worst_performing_21d",
+    "gold.gold_most_volatile",
+    "gold.gold_volume_anomalies",
+    "gold.gold_52_week_highs_lows",
+    "gold.gold_price_analytics"
 ]:
     df = spark.table(table_name)
     count = df.count()
-    size_bytes = spark.sql(f"SELECT SUM(BYTE_LENGTH(CAST(*AS STRING))) as size FROM {table_name}").collect()[0][0]
+    size_bytes = df.select(
+        F.sum(
+            F.length(F.to_json(F.struct(*[F.col(column) for column in df.columns])))
+        ).alias("size")
+    ).collect()[0][0]
     tables_stats.append({
         "table": table_name.split(".")[-1],
         "rows": count,
@@ -386,8 +434,9 @@ all_validators = [
     bronze_products_validator, bronze_orders_validator, bronze_carts_validator,
     silver_hourly_validator, silver_company_validator,
     silver_products_validator, silver_orders_validator, silver_carts_validator,
-    gold_revenue_validator, gold_customer_validator, gold_products_validator,
-    gold_category_validator, gold_anomalies_validator
+    gold_market_summary_validator, gold_sector_performance_validator,
+    gold_best_validator, gold_worst_validator, gold_volatile_validator,
+    gold_volume_validator, gold_range_validator, gold_price_validator
 ]
 
 total_checks = sum(len(v.checks) for v in all_validators)

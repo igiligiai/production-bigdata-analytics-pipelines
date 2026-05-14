@@ -8,7 +8,14 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 - `src/notebooks/extract_company_info.py`: extracts company info into Bronze.
 - `src/notebooks/clean_hourly_data.py`: cleans hourly stock data into `silver.silver_hourly_prices`.
 - `src/notebooks/clean_company_info.py`: cleans company profiles into `silver.silver_company_info`.
-- `src/notebooks/03_transform.py`: builds Gold analytics tables with Spark SQL, window functions, and CTEs.
+- `src/notebooks/gold_market_summary.py`: latest price snapshot per symbol enriched with company profile data.
+- `src/notebooks/gold_sector_performance.py`: sector-level market aggregation.
+- `src/notebooks/gold_best_performing_today.py`: top daily gainers.
+- `src/notebooks/gold_worst_performing_21d.py`: bottom 21-day performers.
+- `src/notebooks/gold_most_volatile.py`: intraday volatility ranking.
+- `src/notebooks/gold_volume_anomalies.py`: today vs 21-day volume spikes.
+- `src/notebooks/gold_52_week_highs_lows.py`: proximity to 52-week range edges.
+- `src/notebooks/gold_price_analytics.py`: per-symbol technical analytics and trend signals.
 - `src/notebooks/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.
 - `databricks.yml`: bundle definition with `dev` and `prod` targets.
 - `resources/clusters/` and `resources/jobs/`: bundle resource definitions split by type.
@@ -19,7 +26,7 @@ Preserve the existing table names and layer prefixes unless the user explicitly 
 
 - Bronze: `bronze.raw_fakestore_products`, `bronze.raw_fakestore_orders`, `bronze.raw_fakestore_carts`
 - Silver: `silver.products_cleaned`, `silver.orders_cleaned`, `silver.carts_cleaned`, `silver.silver_hourly_prices`, `silver.silver_company_info`
-- Gold: `gold.daily_revenue_by_category`, `gold.customer_360_rfm`, `gold.product_performance_metrics`, `gold.category_insights`, `gold.daily_anomalies`
+- Gold: `gold.gold_market_summary`, `gold.gold_sector_performance`, `gold.gold_best_performing_today`, `gold.gold_worst_performing_21d`, `gold.gold_most_volatile`, `gold.gold_volume_anomalies`, `gold.gold_52_week_highs_lows`, `gold.gold_price_analytics`
 
 ## Working rules
 

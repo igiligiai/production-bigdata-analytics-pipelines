@@ -69,18 +69,112 @@ resources:
           depends_on:
             - task_key: stage_1_extract_company_info
 
-        - task_key: stage_3_transform_gold
+        - task_key: stage_3_gold_market_summary
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/03_transform.py
-            base_parameters:
-              anomaly_sensitivity: "2.0"
-          timeout_seconds: 1500
+            notebook_path: ../../src/notebooks/gold_market_summary.py
+          timeout_seconds: 900
 
           email_notifications:
             on_failure:
               - anthony.igiligi@gmail.com
-            on_success:
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_sector_performance
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_sector_performance.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_best_performing_today
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_best_performing_today.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_worst_performing_21d
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_worst_performing_21d.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_most_volatile
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_most_volatile.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_volume_anomalies
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_volume_anomalies.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_52_week_highs_lows
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_52_week_highs_lows.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on:
+            - task_key: stage_2_clean_hourly_data
+            - task_key: stage_2_clean_company_info
+
+        - task_key: stage_3_gold_price_analytics
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/gold_price_analytics.py
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
               - anthony.igiligi@gmail.com
 
           depends_on:
@@ -94,4 +188,11 @@ resources:
           timeout_seconds: 600
 
           depends_on:
-            - task_key: stage_3_transform_gold
+            - task_key: stage_3_gold_market_summary
+            - task_key: stage_3_gold_sector_performance
+            - task_key: stage_3_gold_best_performing_today
+            - task_key: stage_3_gold_worst_performing_21d
+            - task_key: stage_3_gold_most_volatile
+            - task_key: stage_3_gold_volume_anomalies
+            - task_key: stage_3_gold_52_week_highs_lows
+            - task_key: stage_3_gold_price_analytics

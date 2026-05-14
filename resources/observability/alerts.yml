@@ -8,7 +8,7 @@ resources:
       display_name: "High Volume Anomaly Alert"
       query_text: |
         SELECT CAST(COUNT(*) AS DOUBLE) AS anomaly_count
-        FROM gold.daily_anomalies
+        FROM gold.gold_volume_anomalies
       warehouse_id: ${var.sql_warehouse_id}
 
       evaluation:
