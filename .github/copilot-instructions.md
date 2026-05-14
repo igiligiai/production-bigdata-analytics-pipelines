@@ -6,7 +6,8 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 
 - `src/notebooks/extract_stock_data.py`: extracts hourly stock data into Bronze.
 - `src/notebooks/extract_company_info.py`: extracts company info into Bronze.
-- `src/notebooks/02_clean.py`: standardizes and deduplicates Bronze data into Silver tables.
+- `src/notebooks/clean_hourly_data.py`: cleans hourly stock data into `silver.silver_hourly_prices`.
+- `src/notebooks/clean_company_info.py`: cleans company profiles into `silver.silver_company_info`.
 - `src/notebooks/03_transform.py`: builds Gold analytics tables with Spark SQL, window functions, and CTEs.
 - `src/notebooks/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.
 - `databricks.yml`: bundle definition with `dev` and `prod` targets.
@@ -17,12 +18,13 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 Preserve the existing table names and layer prefixes unless the user explicitly asks for a breaking change:
 
 - Bronze: `bronze.raw_fakestore_products`, `bronze.raw_fakestore_orders`, `bronze.raw_fakestore_carts`
-- Silver: `silver.products_cleaned`, `silver.orders_cleaned`, `silver.carts_cleaned`
+- Silver: `silver.products_cleaned`, `silver.orders_cleaned`, `silver.carts_cleaned`, `silver.silver_hourly_prices`, `silver.silver_company_info`
 - Gold: `gold.daily_revenue_by_category`, `gold.customer_360_rfm`, `gold.product_performance_metrics`, `gold.category_insights`, `gold.daily_anomalies`
 
 ## Working rules
 
 - Keep Bronze append-only and Silver/Gold overwrite semantics as currently implemented.
+- Split unrelated Silver cleaning work into separate notebooks instead of combining hourly prices and company info.
 - Preserve data-quality flags, deduplication logic, and validation thresholds unless the request is specifically about those rules.
 - Prefer Spark DataFrame/Spark SQL patterns already used in the repo: explicit casts, `spark.table(...)`, Delta writes, CTEs, and window functions.
 - Keep notebook edits consistent with Databricks notebook source format and the existing stage banners.

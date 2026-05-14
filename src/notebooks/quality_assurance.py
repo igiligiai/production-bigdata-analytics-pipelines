@@ -209,6 +209,27 @@ print(f"\n{'─'*70}\n")
 print("SILVER LAYER VALIDATION\n")
 
 # Silver: Products
+print("🔍 silver.silver_hourly_prices")
+silver_hourly_validator = DataQualityValidator("silver.silver_hourly_prices")
+silver_hourly_validator.check_record_count(min_records=1)
+silver_hourly_validator.check_non_null_columns(["symbol", "extracted_at"])
+silver_hourly_validator.check_no_duplicates(["symbol", "extracted_at"])
+summary = silver_hourly_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+for failure in summary['failures'][:3]:
+    print(f"   ⚠️  {failure}")
+
+print("\n🔍 silver.silver_company_info")
+silver_company_validator = DataQualityValidator("silver.silver_company_info")
+silver_company_validator.check_record_count(min_records=1)
+silver_company_validator.check_non_null_columns(["symbol", "extracted_at"])
+silver_company_validator.check_no_duplicates(["symbol", "extracted_at"])
+summary = silver_company_validator.summary()
+print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+for failure in summary['failures'][:3]:
+    print(f"   ⚠️  {failure}")
+
+# Silver: Products
 print("🔍 silver.products_cleaned")
 silver_products_validator = DataQualityValidator("silver.products_cleaned")
 silver_products_validator.check_record_count(min_records=5)
@@ -363,6 +384,7 @@ print(f"{'='*70}\n")
 
 all_validators = [
     bronze_products_validator, bronze_orders_validator, bronze_carts_validator,
+    silver_hourly_validator, silver_company_validator,
     silver_products_validator, silver_orders_validator, silver_carts_validator,
     gold_revenue_validator, gold_customer_validator, gold_products_validator,
     gold_category_validator, gold_anomalies_validator
