@@ -11,23 +11,38 @@ resources:
       
       max_concurrent_runs: 1
       timeout_seconds: 3600
-      
+
       tasks:
-        - task_key: stage_1_extract_apis
+        - task_key: stage_1_extract_stock_data
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/01_extract.py
+            notebook_path: ../../src/notebooks/extract_stock_data.py
             base_parameters:
               execution_mode: "production"
               max_retries: "3"
           timeout_seconds: 900
-          
+
           email_notifications:
             on_failure:
               - anthony.igiligi@gmail.com
-          
+
           depends_on: []
-        
+
+        - task_key: stage_1_extract_company_info
+          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/extract_company_info.py
+            base_parameters:
+              execution_mode: "production"
+              max_retries: "3"
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+
+          depends_on: []
+
         - task_key: stage_2_clean_standardize
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
@@ -35,14 +50,15 @@ resources:
             base_parameters:
               quality_threshold: "0.85"
           timeout_seconds: 1200
-          
+
           email_notifications:
             on_failure:
               - anthony.igiligi@gmail.com
-          
+
           depends_on:
-            - task_key: stage_1_extract_apis
-        
+            - task_key: stage_1_extract_stock_data
+            - task_key: stage_1_extract_company_info
+
         - task_key: stage_3_transform_gold
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
@@ -50,21 +66,21 @@ resources:
             base_parameters:
               anomaly_sensitivity: "2.0"
           timeout_seconds: 1500
-          
+
           email_notifications:
             on_failure:
               - anthony.igiligi@gmail.com
             on_success:
               - anthony.igiligi@gmail.com
-          
+
           depends_on:
             - task_key: stage_2_clean_standardize
-        
+
         - task_key: stage_4_quality_validation
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
             notebook_path: ../../src/notebooks/quality_assurance.py
           timeout_seconds: 600
-          
+
           depends_on:
             - task_key: stage_3_transform_gold

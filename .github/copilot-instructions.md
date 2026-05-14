@@ -4,7 +4,8 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 
 ## Project shape
 
-- `src/notebooks/01_extract.py`: extracts FakeStore API data into Bronze Delta tables.
+- `src/notebooks/extract_stock_data.py`: extracts hourly stock data into Bronze.
+- `src/notebooks/extract_company_info.py`: extracts company info into Bronze.
 - `src/notebooks/02_clean.py`: standardizes and deduplicates Bronze data into Silver tables.
 - `src/notebooks/03_transform.py`: builds Gold analytics tables with Spark SQL, window functions, and CTEs.
 - `src/notebooks/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.

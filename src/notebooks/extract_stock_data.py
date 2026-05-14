@@ -1,39 +1,48 @@
 # Databricks notebook source
 # ====================================================================
-# STAGE 1: API EXTRACTION (Bronze Layer)
+# STAGE 1A: STOCK DATA EXTRACTION (Bronze Layer)
 # ====================================================================
-# Purpose: Fetch data from multiple e-commerce APIs, validate, and 
-# land raw data in DBFS. This is append-only, preserving all historical data.
+# Purpose: Create the bronze view for hourly stock data and log validation results.
 
 import json
 from datetime import datetime
+
 from pyspark.sql import functions as F
 
 # COMMAND ----------
 
-try:
-    CURRENT_DATETIME = dbutils.widgets.get("ProcessDatetime")
-except:
-    CURRENT_DATETIME = datetime.utcnow()
+def get_process_datetime() -> datetime:
+    process_datetime = dbutils.widgets.getAll().get("ProcessDatetime")
+
+    if process_datetime is None:
+        return datetime.utcnow()
+
+    if isinstance(process_datetime, datetime):
+        return process_datetime
+
+    try:
+        return datetime.fromisoformat(process_datetime.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"Invalid ProcessDatetime widget value: {process_datetime}") from exc
+
+
+CURRENT_DATETIME = get_process_datetime()
 
 # COMMAND ----------
 
-# Configuration
 RAW_DIR = "dbfs:/raw/depeap/extract"
-DBFS_RAW_PATH = f"dbfs:/clean/depeap/yfinance"
 current_date = CURRENT_DATETIME.strftime("%Y-%m-%d")
-current_time = CURRENT_DATETIME.strftime("%H:%M:%S")
 hour = CURRENT_DATETIME.strftime("%H")
-hourly_data = f'{hour}_00_00'
+hourly_data = f"{hour}_00_00"
+
 print(f"Current date: {current_date}")
-print(f"Current time: {current_time}, hourly data: {hourly_data}")
+print(f"Current hour: {hourly_data}")
 
 # COMMAND ----------
+
 
 def stock_data_bronze_view(date: str, hourly_data: str) -> None:
-    """
-    Create or replace the bronze view for the current date and hour.
-    """
+    """Create or replace the bronze view for the current stock batch."""
     source_path = f"{RAW_DIR}/hourly_data/{date}/{hourly_data}.json"
     view_name = "bronze.stock_data_hourly"
 
@@ -45,29 +54,9 @@ def stock_data_bronze_view(date: str, hourly_data: str) -> None:
     )
     print(f"✅ Created view: {view_name} for date: {date} and hour: {hourly_data}")
 
-# COMMAND ----------
-
-def company_info_bronze_view() -> None:
-    """
-    Create or replace the bronze view for company info.
-    """
-    source_path = f"{RAW_DIR}/company_info/company_info.json"
-    view_name = "bronze.company_info"
-
-    spark.sql(
-        f"""
-        CREATE OR REPLACE VIEW {view_name}
-        AS SELECT * FROM json.`{source_path}`
-        """
-    )
-    print(f"✅ Created view: {view_name} for company info")
-
-# COMMAND ----------
 
 def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> dict:
-    """
-    Validate the current bronze stock view and persist a lightweight log.
-    """
+    """Validate the current bronze stock view and persist a lightweight log."""
     df = spark.table(view_name)
     record_count = df.count()
     schema_columns = len(df.columns)
@@ -118,14 +107,7 @@ def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> d
 
 stock_data_bronze_view(current_date, hourly_data)
 
-company_info_bronze_view()
-
 # COMMAND ----------
-
-
-# COMMAND ----------
-
-# VALIDATION & LOGGING
 
 bronze_validation_report = validate_bronze_stock_view(
     "bronze.stock_data_hourly",
@@ -133,14 +115,11 @@ bronze_validation_report = validate_bronze_stock_view(
     hourly_data,
 )
 
-
 # COMMAND ----------
 
-# OPTIONAL: Quick validation of Bronze view
-
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("BRONZE LAYER VALIDATION")
-print("="*60)
+print("=" * 60)
 
 bronze_tables = ["bronze.stock_data_hourly"]
 
@@ -152,8 +131,6 @@ for table_name in bronze_tables:
         print(f"   Total records: {record_count}")
         print(f"   Schema columns: {len(df.columns)}")
         print(f"   Validation status: {bronze_validation_report['status']}")
-        
-        # Show sample
         df.limit(2).display()
     except:
         print(f"⚠️  Table {table_name} not yet created")
