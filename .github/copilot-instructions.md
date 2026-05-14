@@ -26,11 +26,11 @@ Preserve the existing table names and layer prefixes unless the user explicitly 
 
 - Bronze: `bronze.raw_fakestore_products`, `bronze.raw_fakestore_orders`, `bronze.raw_fakestore_carts`
 - Silver: `silver.products_cleaned`, `silver.orders_cleaned`, `silver.carts_cleaned`, `silver.silver_hourly_prices`, `silver.silver_company_info`
-- Gold: `gold.gold_market_summary`, `gold.gold_sector_performance`, `gold.gold_best_performing_today`, `gold.gold_worst_performing_21d`, `gold.gold_most_volatile`, `gold.gold_volume_anomalies`, `gold.gold_52_week_highs_lows`, `gold.gold_price_analytics`
+- Gold views: `gold.gold_market_summary`, `gold.gold_sector_performance`, `gold.gold_best_performing_today`, `gold.gold_worst_performing_21d`, `gold.gold_most_volatile`, `gold.gold_volume_anomalies`, `gold.gold_52_week_highs_lows`, `gold.gold_price_analytics`
 
 ## Working rules
 
-- Keep Bronze append-only and Silver/Gold overwrite semantics as currently implemented.
+- Keep Bronze append-only and Silver overwrite semantics as currently implemented; Gold outputs are permanent views.
 - Split unrelated Silver cleaning work into separate notebooks instead of combining hourly prices and company info.
 - Preserve data-quality flags, deduplication logic, and validation thresholds unless the request is specifically about those rules.
 - Prefer Spark DataFrame/Spark SQL patterns already used in the repo: explicit casts, `spark.table(...)`, Delta writes, CTEs, and window functions.

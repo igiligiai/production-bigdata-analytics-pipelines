@@ -9,8 +9,10 @@ from pyspark.sql import functions as F
 spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
-def write_gold_table(df, table_name: str) -> None:
-    df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(table_name)
+def write_gold_view(df, view_name: str) -> None:
+    temp_view_name = f"_{view_name.replace('.', '_')}_source"
+    df.createOrReplaceTempView(temp_view_name)
+    spark.sql(f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM {temp_view_name}")
 
 
 print(f"\n{'=' * 60}")
@@ -102,6 +104,6 @@ gold_volume_anomalies = (
     .orderBy(F.col("volume_ratio").desc(), F.col("today_volume").desc())
 )
 
-write_gold_table(gold_volume_anomalies, "gold.gold_volume_anomalies")
+write_gold_view(gold_volume_anomalies, "gold.gold_volume_anomalies")
 
 print(f"✅ {gold_volume_anomalies.count()} rows written to gold.gold_volume_anomalies")
