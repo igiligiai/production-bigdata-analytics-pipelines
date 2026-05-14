@@ -8,14 +8,14 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 - `src/notebooks/extract_company_info.py`: extracts company info into Bronze.
 - `src/notebooks/clean_hourly_data.py`: cleans hourly stock data into `silver.silver_hourly_prices`.
 - `src/notebooks/clean_company_info.py`: cleans company profiles into `silver.silver_company_info`.
-- `src/notebooks/gold_market_summary.py`: latest price snapshot per symbol enriched with company profile data.
-- `src/notebooks/gold_sector_performance.py`: sector-level market aggregation.
-- `src/notebooks/gold_best_performing_today.py`: top daily gainers.
-- `src/notebooks/gold_worst_performing_21d.py`: bottom 21-day performers.
-- `src/notebooks/gold_most_volatile.py`: intraday volatility ranking.
-- `src/notebooks/gold_volume_anomalies.py`: today vs 21-day volume spikes.
-- `src/notebooks/gold_52_week_highs_lows.py`: proximity to 52-week range edges.
-- `src/notebooks/gold_price_analytics.py`: per-symbol technical analytics and trend signals.
+- `src/notebooks/gold_market_summary.sql`: latest price snapshot per symbol enriched with company profile data.
+- `src/notebooks/gold_sector_performance.sql`: sector-level market aggregation.
+- `src/notebooks/gold_best_performing_today.sql`: top daily gainers.
+- `src/notebooks/gold_worst_performing_21d.sql`: bottom 21-day performers.
+- `src/notebooks/gold_most_volatile.sql`: intraday volatility ranking.
+- `src/notebooks/gold_volume_anomalies.sql`: today vs 21-day volume spikes.
+- `src/notebooks/gold_52_week_highs_lows.sql`: proximity to 52-week range edges.
+- `src/notebooks/gold_price_analytics.sql`: per-symbol technical analytics and trend signals.
 - `src/notebooks/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.
 - `databricks.yml`: bundle definition with `dev` and `prod` targets.
 - `resources/clusters/` and `resources/jobs/`: bundle resource definitions split by type.

@@ -72,7 +72,7 @@ resources:
         - task_key: stage_3_gold_market_summary
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_market_summary.py
+            notebook_path: ../../src/notebooks/gold_market_summary.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -86,7 +86,7 @@ resources:
         - task_key: stage_3_gold_sector_performance
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_sector_performance.py
+            notebook_path: ../../src/notebooks/gold_sector_performance.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -100,7 +100,7 @@ resources:
         - task_key: stage_3_gold_best_performing_today
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_best_performing_today.py
+            notebook_path: ../../src/notebooks/gold_best_performing_today.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -114,7 +114,7 @@ resources:
         - task_key: stage_3_gold_worst_performing_21d
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_worst_performing_21d.py
+            notebook_path: ../../src/notebooks/gold_worst_performing_21d.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -128,7 +128,7 @@ resources:
         - task_key: stage_3_gold_most_volatile
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_most_volatile.py
+            notebook_path: ../../src/notebooks/gold_most_volatile.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -142,7 +142,7 @@ resources:
         - task_key: stage_3_gold_volume_anomalies
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_volume_anomalies.py
+            notebook_path: ../../src/notebooks/gold_volume_anomalies.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -156,7 +156,7 @@ resources:
         - task_key: stage_3_gold_52_week_highs_lows
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_52_week_highs_lows.py
+            notebook_path: ../../src/notebooks/gold_52_week_highs_lows.sql
           timeout_seconds: 900
 
           email_notifications:
@@ -170,7 +170,7 @@ resources:
         - task_key: stage_3_gold_price_analytics
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/gold_price_analytics.py
+            notebook_path: ../../src/notebooks/gold_price_analytics.sql
           timeout_seconds: 900
 
           email_notifications:
