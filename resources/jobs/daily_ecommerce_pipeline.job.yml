@@ -184,7 +184,7 @@ resources:
         - task_key: stage_4_quality_validation
           existing_cluster_id: ${resources.clusters.prod_etl.id}
           notebook_task:
-            notebook_path: ../../src/notebooks/quality_assurance.py
+            notebook_path: ../../src/notebooks/adhoc/quality_assurance.py
           timeout_seconds: 600
 
           depends_on:

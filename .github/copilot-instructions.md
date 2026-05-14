@@ -16,9 +16,10 @@ This repository is a Databricks Asset Bundle for a production-style e-commerce a
 - `src/notebooks/gold/gold_volume_anomalies.sql`: today vs 21-day volume spikes.
 - `src/notebooks/gold/gold_52_week_highs_lows.sql`: proximity to 52-week range edges.
 - `src/notebooks/gold/gold_price_analytics.sql`: per-symbol technical analytics and trend signals.
-- `src/notebooks/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.
+- `src/notebooks/adhoc/weekly_silver_analysis.py`: weekly Silver-layer customer and category analysis.
+- `src/notebooks/adhoc/quality_assurance.py`: validates Bronze/Silver/Gold data quality and writes a validation report.
 - `databricks.yml`: bundle definition with `dev` and `prod` targets.
-- `resources/clusters/` and `resources/jobs/`: bundle resource definitions split by type.
+- `resources/clusters/` and `resources/jobs/`: bundle resource definitions split by type. The daily ETL job and weekly analytics refresh job reference the notebooks above directly.
 
 ## Data model and table names
 
