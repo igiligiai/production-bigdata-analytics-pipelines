@@ -10,9 +10,9 @@ spark.sql("CREATE SCHEMA IF NOT EXISTS gold")
 
 
 def write_gold_view(df, view_name: str) -> None:
-    temp_view_name = f"_{view_name.replace('.', '_')}_source"
-    df.createOrReplaceTempView(temp_view_name)
-    spark.sql(f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM {temp_view_name}")
+    staging_table_name = f"{view_name}__staging"
+    df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(staging_table_name)
+    spark.sql(f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM {staging_table_name}")
 
 
 print(f"\n{'=' * 60}")
