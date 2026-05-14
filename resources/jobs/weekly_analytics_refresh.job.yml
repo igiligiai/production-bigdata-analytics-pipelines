@@ -14,7 +14,11 @@ resources:
       
       tasks:
         - task_key: weekly_analytics
-          existing_cluster_id: ${resources.clusters.prod_etl.id}
+          existing_cluster_id: ${shared_job_compute.id}
           notebook_task:
             notebook_path: ../../src/notebooks/adhoc/weekly_silver_analysis.py
           depends_on: []
+      
+      job_clusters:
+        - job_cluster_key: "shared_job_compute"
+          new_cluster: ${var.etl_job_cluster}
