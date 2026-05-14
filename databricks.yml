@@ -23,7 +23,7 @@ variables:
       prod:
         node_type: Standard_D4s_v3
         num_workers: 4
-        autotermination_minutes: 5
+        autotermination_minutes: 10
 
   sql_warehouse_id:
     description: SQL Warehouse ID used by SQL alerts

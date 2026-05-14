@@ -5,7 +5,7 @@ resources:
   
   clusters:
     dev_etl:
-      cluster_name: "ecommerce-dev-etl-${var.environment}"
+      cluster_name: "ecommerce-etl-${var.environment}"
       spark_version: "13.3.x-scala2.12"
       node_type_id: "${var.cluster_config.dev.node_type}"
       driver_node_type_id: "${var.cluster_config.dev.node_type}"
