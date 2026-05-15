@@ -11,6 +11,9 @@ variables:
   environment:
     description: Deployment environment (dev or prod)
     default: dev
+  status:
+    description: Job schedule status (PAUSED or UNPAUSED)
+    default: PAUSED
 
   cluster_config:
     description: Cluster sizing and runtime configuration
@@ -41,6 +44,7 @@ targets:
       host: https://adb-1040672858755634.14.azuredatabricks.net
     variables:
       environment: dev
+      status: PAUSED
 
   prod:
     mode: production
@@ -50,3 +54,4 @@ targets:
       root_path: /Workspace/Users/anthony.igiligi@sii-germany.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       environment: prod
+      status: UNPAUSED

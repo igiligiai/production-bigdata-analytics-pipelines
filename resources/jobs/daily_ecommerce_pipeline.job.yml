@@ -5,14 +5,27 @@ resources:
       description: "Multi-stage pipeline: Extract APIs → Bronze → Silver → Gold"
       
       schedule:
-        quartz_cron_expression: "0 0 9 * * ?"
+        quartz_cron_expression: "0 0 9-18 ? * MON-FRI"
         timezone_id: "Europe/Berlin"
-        pause_status: "UNPAUSED"
+        pause_status: ${var.status}
       
       max_concurrent_runs: 1
       timeout_seconds: 3600
 
       tasks:
+        - task_key: stage_0_read_api_data
+          existing_cluster_id: ${resources.clusters.dev_etl.id}
+          notebook_task:
+            notebook_path: ../../src/notebooks/json_extractor.py
+            base_parameters:
+              execution_mode: "production"
+              max_retries: "3"
+          timeout_seconds: 900
+
+          email_notifications:
+            on_failure:
+              - anthony.igiligi@gmail.com
+  
         - task_key: stage_1_extract_stock_data
           existing_cluster_id: ${resources.clusters.dev_etl.id}
           notebook_task:
@@ -26,7 +39,8 @@ resources:
             on_failure:
               - anthony.igiligi@gmail.com
 
-          depends_on: []
+          depends_on:
+            - task_key: stage_0_read_api_data
 
         - task_key: stage_1_extract_company_info
           existing_cluster_id: ${resources.clusters.dev_etl.id}
@@ -41,7 +55,8 @@ resources:
             on_failure:
               - anthony.igiligi@gmail.com
 
-          depends_on: []
+          depends_on:
+            - task_key: stage_0_read_api_data
 
         - task_key: stage_2_clean_hourly_data
           existing_cluster_id: ${resources.clusters.dev_etl.id}
