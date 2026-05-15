@@ -21,11 +21,11 @@ variables:
     default:
       dev:
         node_type: Standard_DS3_v2
-        num_workers: 2
+        num_workers: 1
         autotermination_minutes: 15
       prod:
         node_type: Standard_D4s_v3
-        num_workers: 4
+        num_workers: 2
         autotermination_minutes: 10
 
   sql_warehouse_id:

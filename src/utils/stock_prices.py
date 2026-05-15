@@ -4,9 +4,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
+import requests
 import yfinance as yf
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
+
+def yfinance_instance():
+    # Configure retry strategy with backoff
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=5,
+        backoff_factor=2,  # 2, 4, 8, 16, 32 seconds
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
 
 NASDAQ_100_SYMBOLS = [
     "AAPL", "ABNB", "ADBE", "ADI", "ADP", "ADSK", "AEP", "AMAT", "AMD",
@@ -54,7 +72,8 @@ def get_hourly_stock_data(symbol: str) -> Dict:
         if not symbol:
             return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
 
-        info = yf.Ticker(symbol).info or {}
+        session = yfinance_instance()
+        info = yf.Ticker(symbol, session=session).info or {}
         return {
             "symbol": symbol,
             "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
@@ -88,7 +107,8 @@ def get_company_info(symbol: str) -> Dict:
         if not symbol:
             return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
 
-        info = yf.Ticker(symbol).info or {}
+        session = yfinance_instance()
+        info = yf.Ticker(symbol, session=session).info or {}
 
         return {
             # Identity & profile
@@ -181,6 +201,7 @@ def extract_hourly_prices(symbols: List[str] | None = None) -> List[Dict]:
     for sym in symbols:
         logger.info("Fetching hourly data for %s", sym)
         results.append(get_hourly_stock_data(sym))
+        time.sleep(5)
     return results
 
 
@@ -191,6 +212,7 @@ def extract_company_info(symbols: List[str] | None = None) -> List[Dict]:
     for sym in symbols:
         logger.info("Fetching company info for %s", sym)
         results.append(get_company_info(sym))
+        time.sleep(5)
     return results
 
 
