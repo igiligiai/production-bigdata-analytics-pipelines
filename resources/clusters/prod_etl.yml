@@ -16,3 +16,7 @@ variables:
         "spark.sql.adaptive.skewJoin.enabled": "true"
         "spark.dynamodb.throughput.read.percent": "0.5"
         "spark.sql.files.maxPartitionBytes": "1073741824"
+
+      libraries:
+        - pypi:
+            package: yfinance

@@ -15,6 +15,9 @@ resources:
       tasks:
         - task_key: stage_0_read_api_data
           existing_cluster_id: ${resources.clusters.dev_etl.id}
+          libraries:
+            - pypi:
+                package: "yfinance==0.2.43"
           notebook_task:
             notebook_path: ../../src/notebooks/json_extractor.py
             base_parameters:

@@ -1,9 +1,16 @@
 # Databricks notebook source
 
-# COMMAND ----------
-
 import json
-from utils.stock_prices import extract_company_info, extract_hourly_prices
+import os
+import sys
+
+try:
+    # Works when running with `src` on PYTHONPATH (e.g. local tests/dev setup)
+    from utils.stock_prices import extract_company_info, extract_hourly_prices
+except ModuleNotFoundError:
+    # Fallback for Databricks jobs running from repo root
+    sys.path.insert(0, os.path.abspath("../.."))
+    from src.utils.stock_prices import extract_company_info, extract_hourly_prices
 
 # COMMAND ----------
 
