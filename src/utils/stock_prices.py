@@ -72,8 +72,8 @@ def get_hourly_stock_data(symbol: str) -> Dict:
         if not symbol:
             return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
 
-        session = yfinance_instance()
-        info = yf.Ticker(symbol, session=session).info or {}
+        # session = yfinance_instance()
+        info = yf.Ticker(symbol).info or {}
         return {
             "symbol": symbol,
             "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
@@ -107,8 +107,8 @@ def get_company_info(symbol: str) -> Dict:
         if not symbol:
             return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
 
-        session = yfinance_instance()
-        info = yf.Ticker(symbol, session=session).info or {}
+        # session = yfinance_instance()
+        info = yf.Ticker(symbol).info or {}
 
         return {
             # Identity & profile
@@ -225,3 +225,13 @@ def write_json(data: List[Dict], filename: str, path: Path) -> Path:
         json.dump(data, f, indent=2, default=str)
     logger.info("Wrote %d records to %s", len(data), path_str)
     return path_str
+
+
+# if __name__ == "__main__":
+#     # Example usage: extract and save hourly prices and company info
+#     hourly_prices = extract_hourly_prices()
+#     # company_info = extract_company_info()
+
+#     # write_json(hourly_prices, "hourly_prices", Path("./data/hourly"))
+#     # write_json(company_info, "company_info", Path("./data/company_info"))
+#     print(hourly_prices[0])
