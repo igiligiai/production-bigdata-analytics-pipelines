@@ -14,7 +14,7 @@ resources:
 
       tasks:
         - task_key: stage_0_read_api_data
-          existing_cluster_id: 0508-115948-zynltt4i
+          existing_cluster_id: ${resources.clusters.dev_etl_single_node.id}
           libraries:
             - pypi:
                 package: "yfinance==0.2.43"

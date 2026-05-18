@@ -57,7 +57,22 @@ def _timestamp_iso(epoch) -> str | None:
     return None
 
 
-def get_hourly_stock_data(symbol: str) -> Dict:
+def fetch_stock_data(symbols: List[str] | None = None) -> List[Dict]:
+    """Fetch stock data for a single symbol."""
+    symbols = symbols or NASDAQ_100_SYMBOLS
+    results = []
+    for symbol in symbols:
+        try:
+            info = yf.Ticker(symbol.upper().strip()).info or {}
+            results.append(info)
+        except Exception as e:
+            logger.error("Stock data fetch failed for %s: %s", symbol.upper().strip(), e)
+            results.append({"error": "Lookup Error", "symbol": symbol.upper().strip(), "message": str(e)})
+        time.sleep(5)
+    return results
+
+
+def get_hourly_stock_data(info: Dict) -> Dict:
     """
     Extract hourly price snapshot for a single symbol.
 
@@ -68,14 +83,8 @@ def get_hourly_stock_data(symbol: str) -> Dict:
         Dict with hourly price fields or an error payload.
     """
     try:
-        symbol = symbol.upper().strip()
-        if not symbol:
-            return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
-
-        # session = yfinance_instance()
-        info = yf.Ticker(symbol).info or {}
         return {
-            "symbol": symbol,
+            "symbol": info.get("symbol"),
             "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
             "current_price": _safe_round(info.get("currentPrice")),
             "day_high": _safe_round(info.get("dayHigh") or info.get("regularMarketDayHigh")),
@@ -89,11 +98,11 @@ def get_hourly_stock_data(symbol: str) -> Dict:
             "fifty_two_week_low": _safe_round(info.get("fiftyTwoWeekLow")),
         }
     except Exception as e:
-        logger.error("Hourly data extraction failed for %s: %s", symbol, e)
-        return {"error": "Lookup Error", "symbol": symbol, "message": str(e)}
+        logger.error("Hourly data extraction failed for %s: %s", info.get("symbol"), e)
+        return {"error": "Lookup Error", "symbol": info.get("symbol"), "message": str(e)}
 
 
-def get_company_info(symbol: str) -> Dict:
+def get_company_info(info: Dict) -> Dict:
     """
     Extract general (mostly static) company information for a single symbol.
 
@@ -103,17 +112,10 @@ def get_company_info(symbol: str) -> Dict:
         Dict with company profile fields or an error payload.
     """
     try:
-        symbol = symbol.upper().strip()
-        if not symbol:
-            return {"error": "Invalid Symbol", "message": "Symbol cannot be empty"}
-
-        # session = yfinance_instance()
-        info = yf.Ticker(symbol).info or {}
-
         return {
             # Identity & profile
-            "symbol": symbol,
-            "company_name": info.get("longName") or info.get("shortName", symbol),
+            "symbol": info.get("symbol"),
+            "company_name": info.get("longName") or info.get("shortName", info.get("symbol")),
             "sector": info.get("sector"),
             "industry": info.get("industry"),
             "quote_type": info.get("quoteType"),
@@ -190,28 +192,24 @@ def get_company_info(symbol: str) -> Dict:
             "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
         }
     except Exception as e:
-        logger.error("Company info error for %s: %s", symbol, e)
-        return {"error": "Lookup Error", "symbol": symbol, "message": str(e)}
+        logger.error("Company info error for %s: %s", info.get("symbol"), e)
+        return {"error": "Lookup Error", "symbol": info.get("symbol"), "message": str(e)}
 
 
-def extract_hourly_prices(symbols: List[str] | None = None) -> List[Dict]:
+def extract_hourly_prices(data: List[Dict]) -> List[Dict]:
     """Fetch hourly price snapshots for all given symbols (default: NASDAQ 100)."""
-    symbols = symbols or NASDAQ_100_SYMBOLS
     results = []
-    for sym in symbols:
-        logger.info("Fetching hourly data for %s", sym)
-        results.append(get_hourly_stock_data(sym))
+    for item in data:
+        results.append(get_hourly_stock_data(item))
         time.sleep(5)
     return results
 
 
-def extract_company_info(symbols: List[str] | None = None) -> List[Dict]:
+def extract_company_info(data: List[Dict]) -> List[Dict]:
     """Fetch company info for all given symbols (default: NASDAQ 100)."""
-    symbols = symbols or NASDAQ_100_SYMBOLS
     results = []
-    for sym in symbols:
-        logger.info("Fetching company info for %s", sym)
-        results.append(get_company_info(sym))
+    for item in data:
+        results.append(get_company_info(item))
         time.sleep(5)
     return results
 
