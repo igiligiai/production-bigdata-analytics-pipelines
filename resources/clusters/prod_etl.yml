@@ -1,0 +1,23 @@
+variables:
+  etl_job_cluster:
+    description: Cluster configuration for the ETL job
+    type: complex
+    default:
+      spark_version: "16.4.x-scala2.13"
+      driver_node_type_id: "${var.cluster_config.prod.node_type}"
+      node_type_id: "${var.cluster_config.prod.node_type}"
+      num_workers: ${var.cluster_config.prod.num_workers}
+      autotermination_minutes: ${var.cluster_config.prod.autotermination_minutes}
+
+      spark_conf:
+        "spark.sql.shuffle.partitions": "200"
+        "spark.default.parallelism": "4"
+        "spark.databricks.delta.schema.autoMerge.enabled": "true"
+        "spark.sql.adaptive.enabled": "true"
+        "spark.sql.adaptive.skewJoin.enabled": "true"
+        "spark.dynamodb.throughput.read.percent": "0.5"
+        "spark.sql.files.maxPartitionBytes": "1073741824"
+
+      libraries:
+        - pypi:
+            package: "yfinance==0.2.43"

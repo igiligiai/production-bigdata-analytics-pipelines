@@ -1,0 +1,52 @@
+resources:
+  # ====================================================================
+  # CLUSTERS
+  # ====================================================================
+  
+  clusters:
+    dev_etl_single_node:
+      cluster_name: "bigpplt-etl-s-${var.environment}"
+      spark_version: "16.4.x-scala2.12"
+      node_type_id: "${var.cluster_config.dev.node_type}"
+      driver_node_type_id: "${var.cluster_config.dev.node_type}"
+      num_workers: 0
+      autotermination_minutes: ${var.cluster_config.dev.autotermination_minutes}
+      
+      spark_conf:
+        "spark.sql.shuffle.partitions": "200"
+        "spark.default.parallelism": "4"
+        "spark.databricks.cluster.profile": "singleNode"
+        "spark.databricks.delta.schema.autoMerge.enabled": "true"
+        "spark.sql.adaptive.enabled": "true"
+        "spark.sql.adaptive.skewJoin.enabled": "true"
+        "spark.dynamodb.throughput.read.percent": "0.5"
+        "spark.sql.files.maxPartitionBytes": "1073741824"
+        "spark.master": "local[*]"
+      
+      custom_tags:
+        env: "${var.environment}"
+        team: "data-engineering"
+        purpose: "etl-pipeline"
+        ResourceClass: "SingleNode"
+    
+    dev_etl_multi_node:
+      cluster_name: "bigpplt-etl-m-${var.environment}"
+      spark_version: "16.4.x-scala2.12"
+      node_type_id: "${var.cluster_config.dev.node_type}"
+      driver_node_type_id: "${var.cluster_config.dev.node_type}"
+      num_workers: ${var.cluster_config.dev.num_workers}
+      autotermination_minutes: ${var.cluster_config.dev.autotermination_minutes}
+      
+      spark_conf:
+        "spark.sql.shuffle.partitions": "200"
+        "spark.default.parallelism": "4"
+        "spark.databricks.delta.schema.autoMerge.enabled": "true"
+        "spark.sql.adaptive.enabled": "true"
+        "spark.sql.adaptive.skewJoin.enabled": "true"
+        "spark.dynamodb.throughput.read.percent": "0.5"
+        "spark.sql.files.maxPartitionBytes": "1073741824"
+      
+      custom_tags:
+        env: "${var.environment}"
+        team: "data-engineering"
+        purpose: "etl-pipeline"

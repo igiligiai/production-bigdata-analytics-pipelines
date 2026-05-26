@@ -1,12 +1,36 @@
-# This is a Databricks asset bundle definition for production_ecommerce_analytics_pipelines.
+# This is a Databricks asset bundle definition for production_bigdata_analytics_pipelines.
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: production_ecommerce_analytics_pipelines
+  name: production_bigdata_analytics_pipelines
   uuid: c54d4af5-1748-4f99-899b-852875a948b6
 
 include:
-  - resources/*.yml
-  - resources/*/*.yml
+  - resources/**/*.yml
+
+variables:
+  environment:
+    description: Deployment environment (dev or prod)
+    default: dev
+  status:
+    description: Job schedule status (PAUSED or UNPAUSED)
+    default: PAUSED
+
+  cluster_config:
+    description: Cluster sizing and runtime configuration
+    type: complex
+    default:
+      dev:
+        node_type: Standard_DS3_v2
+        num_workers: 1
+        autotermination_minutes: 15
+      prod:
+        node_type: Standard_D4s_v3
+        num_workers: 2
+        autotermination_minutes: 10
+
+  sql_warehouse_id:
+    description: SQL Warehouse ID used by SQL alerts
+    default: d31f81932da25bdc
 
 targets:
   dev:
@@ -18,6 +42,9 @@ targets:
     default: true
     workspace:
       host: https://adb-1040672858755634.14.azuredatabricks.net
+    variables:
+      environment: dev
+      status: PAUSED
 
   prod:
     mode: production
@@ -25,6 +52,6 @@ targets:
       host: https://adb-1040672858755634.14.azuredatabricks.net
       # We explicitly deploy to /Workspace/Users/anthony.igiligi@sii-germany.com to make sure we only have a single copy.
       root_path: /Workspace/Users/anthony.igiligi@sii-germany.com/.bundle/${bundle.name}/${bundle.target}
-    permissions:
-      - user_name: anthony.igiligi@sii-germany.com
-        level: CAN_MANAGE
+    variables:
+      environment: prod
+      status: UNPAUSED

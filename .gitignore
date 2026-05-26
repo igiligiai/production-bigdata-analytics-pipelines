@@ -7,3 +7,6 @@ __pycache__/
 scratch/**
 !scratch/README.md
 .env
+uv.lock
+.agents/
+skills-lock.json

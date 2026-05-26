@@ -1,5 +1,5 @@
 [project]
-name = "production_ecommerce_analytics_pipelines"
+name = "production_bigdata_analytics_pipelines"
 version = "0.0.1"
 authors = [{ name = "anthony.igiligi@sii-germany.com" }]
 requires-python = ">=3.10,<=3.13"
@@ -16,6 +16,7 @@ dev = [
     # than the remote cluster or serverless compute you connect to.
     # See also https://docs.databricks.com/dev-tools/databricks-connect.html.
     "databricks-connect>=15.4,<15.5",
+    "yfinance>=0.2.43"
 ]
 
 [tool.pytest.ini_options]
@@ -29,7 +30,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/production_ecommerce_analytics_pipelines"]
+packages = ["src/production_bigdata_analytics_pipelines"]
 
 [project.scripts]
-main = "production_ecommerce_analytics_pipelines.main:main"
+main = "production_bigdata_analytics_pipelines.main:main"

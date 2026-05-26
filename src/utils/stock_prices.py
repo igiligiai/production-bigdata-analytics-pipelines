@@ -1,0 +1,235 @@
+import json
+import logging
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Dict, List
+
+import requests
+import yfinance as yf
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logger = logging.getLogger(__name__)
+
+def yfinance_instance():
+    # Configure retry strategy with backoff
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=5,
+        backoff_factor=2,  # 2, 4, 8, 16, 32 seconds
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+NASDAQ_100_SYMBOLS = [
+    "AAPL", "ABNB", "ADBE", "ADI", "ADP", "ADSK", "AEP", "AMAT", "AMD",
+    "AMGN", "AMZN", "ANSS", "APP", "ARM", "ASML", "AVGO", "AZN", "BIIB",
+    "BKNG", "BKR", "CDNS", "CDW", "CEG", "CHTR", "CMCSA", "COIN", "COST",
+    "CPRT", "CRWD", "CSGP", "CSCO", "CTAS", "CTSH", "DASH", "DDOG",
+    "DLTR", "DXCM", "EA", "EXC", "FANG", "FAST", "FTNT", "GEHC", "GFS",
+    "GILD", "GOOG", "GOOGL", "HON", "IDXX", "ILMN", "INTC", "INTU",
+    "ISRG", "KDP", "KHC", "KLAC", "LIN", "LRCX", "LULU", "MAR", "MCHP",
+    "MDB", "MDLZ", "MELI", "META", "MNST", "MRNA", "MRVL", "MSFT", "MU",
+    "NFLX", "NVDA", "NXPI", "ODFL", "ON", "ORLY", "PANW", "PAYX", "PCAR",
+    "PDD", "PEP", "PLTR", "PYPL", "QCOM", "REGN", "ROP", "ROST", "SBUX",
+    "SMCI", "SNPS", "TEAM", "TMUS", "TSLA", "TTD", "TTWO", "TXN", "VRSK",
+    "VRTX", "WBD", "WDAY", "XEL", "ZS",
+]
+
+
+def _safe_round(value, decimals: int = 2):
+    """Round a numeric value safely, returning None for non-numeric inputs."""
+    try:
+        return round(float(value), decimals)
+    except (TypeError, ValueError):
+        return None
+
+
+def _timestamp_iso(epoch) -> str | None:
+    """Convert an epoch timestamp to ISO 8601 UTC string."""
+    if isinstance(epoch, (int, float)):
+        return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
+    return None
+
+
+def fetch_stock_data(symbols: List[str] | None = None) -> List[Dict]:
+    """Fetch stock data for a single symbol."""
+    symbols = symbols or NASDAQ_100_SYMBOLS
+    results = []
+    for symbol in symbols:
+        try:
+            info = yf.Ticker(symbol.upper().strip()).info or {}
+            results.append(info)
+        except Exception as e:
+            logger.error("Stock data fetch failed for %s: %s", symbol.upper().strip(), e)
+            results.append({"error": "Lookup Error", "symbol": symbol.upper().strip(), "message": str(e)})
+        time.sleep(5)
+    return results
+
+
+def get_hourly_stock_data(info: Dict) -> Dict:
+    """
+    Extract hourly price snapshot for a single symbol.
+
+    Captures time-sensitive market data meant to be collected once per hour:
+    current price, day high/low, open, previous close, volume, and market cap.
+
+    Returns:
+        Dict with hourly price fields or an error payload.
+    """
+    try:
+        return {
+            "symbol": info.get("symbol"),
+            "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
+            "current_price": _safe_round(info.get("currentPrice")),
+            "day_high": _safe_round(info.get("dayHigh") or info.get("regularMarketDayHigh")),
+            "day_low": _safe_round(info.get("dayLow") or info.get("regularMarketDayLow")),
+            "previous_close": _safe_round(info.get("previousClose") or info.get("regularMarketPreviousClose")),
+            "volume": info.get("volume") or info.get("regularMarketVolume"),
+            "market_cap": info.get("marketCap"),
+            "fifty_day_average": _safe_round(info.get("fiftyDayAverage")),
+            "two_hundred_day_average": _safe_round(info.get("twoHundredDayAverage")),
+            "fifty_two_week_high": _safe_round(info.get("fiftyTwoWeekHigh")),
+            "fifty_two_week_low": _safe_round(info.get("fiftyTwoWeekLow")),
+        }
+    except Exception as e:
+        logger.error("Hourly data extraction failed for %s: %s", info.get("symbol"), e)
+        return {"error": "Lookup Error", "symbol": info.get("symbol"), "message": str(e)}
+
+
+def get_company_info(info: Dict) -> Dict:
+    """
+    Extract general (mostly static) company information for a single symbol.
+
+    This data changes infrequently and is suited for a daily or on-demand refresh.
+
+    Returns:
+        Dict with company profile fields or an error payload.
+    """
+    try:
+        return {
+            # Identity & profile
+            "symbol": info.get("symbol"),
+            "company_name": info.get("longName") or info.get("shortName", info.get("symbol")),
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "quote_type": info.get("quoteType"),
+            "long_business_summary": info.get("longBusinessSummary"),
+
+            # Location & contact
+            "country": info.get("country"),
+            "city": info.get("city"),
+            "state": info.get("state"),
+            "address": info.get("address1"),
+            "zip_code": info.get("zip"),
+            "phone": info.get("phone"),
+            "website": info.get("website"),
+            "ir_website": info.get("irWebsite"),
+
+            # Workforce
+            "full_time_employees": info.get("fullTimeEmployees"),
+
+            # Exchange & market
+            "exchange": info.get("exchange"),
+            "full_exchange_name": info.get("fullExchangeName"),
+            "currency": info.get("financialCurrency") or info.get("currency"),
+            "regular_market_time": _timestamp_iso(info.get("regularMarketTime")),
+            "regular_market_open": _safe_round(info.get("open") or info.get("regularMarketOpen")),
+            "first_trade_date": _timestamp_iso(
+                info.get("firstTradeDateMilliseconds", 0) / 1000
+                if info.get("firstTradeDateMilliseconds")
+                else None
+            ),
+            "last_split_date": _timestamp_iso(info.get("lastSplitDate")),
+            "last_split_factor": info.get("lastSplitFactor"),
+
+            # Share structure
+            "shares_outstanding": info.get("sharesOutstanding"),
+            "float_shares": info.get("floatShares"),
+            "held_percent_insiders": _safe_round(info.get("heldPercentInsiders"), 4),
+            "held_percent_institutions": _safe_round(info.get("heldPercentInstitutions"), 4),
+
+            # Risk & governance
+            "beta": _safe_round(info.get("beta"), 3),
+            "audit_risk": info.get("auditRisk"),
+            "board_risk": info.get("boardRisk"),
+            "compensation_risk": info.get("compensationRisk"),
+            "share_holder_rights_risk": info.get("shareHolderRightsRisk"),
+            "overall_risk": info.get("overallRisk"),
+
+            # Dividends
+            "dividend_rate": _safe_round(info.get("dividendRate")),
+            "dividend_yield": _safe_round(info.get("dividendYield"), 4),
+
+            # Analyst sentiment
+            "number_of_analyst_opinions": info.get("numberOfAnalystOpinions"),
+            "recommendation_key": info.get("recommendationKey"),
+
+            # Financials (latest snapshot)
+            "total_revenue": info.get("totalRevenue"),
+            "total_debt": info.get("totalDebt"),
+            "total_cash": info.get("totalCash"),
+            "free_cashflow": info.get("freeCashflow"),
+            "book_value": _safe_round(info.get("bookValue")),
+            "revenue_growth": _safe_round(info.get("revenueGrowth"), 4),
+            "earnings_growth": _safe_round(info.get("earningsGrowth"), 4),
+            "profit_margins": _safe_round(info.get("profitMargins"), 4),
+            "gross_margins": _safe_round(info.get("grossMargins"), 4),
+            "operating_margins": _safe_round(info.get("operatingMargins"), 4),
+            "return_on_assets": _safe_round(info.get("returnOnAssets"), 4),
+            "return_on_equity": _safe_round(info.get("returnOnEquity"), 4),
+            "trailing_pe": _safe_round(info.get("trailingPE")),
+            "forward_pe": _safe_round(info.get("forwardPE")),
+            "peg_ratio": _safe_round(info.get("pegRatio")),
+            "trailing_eps": _safe_round(info.get("trailingEps")),
+            "forward_eps": _safe_round(info.get("forwardEps")),
+
+            "extracted_at": datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    except Exception as e:
+        logger.error("Company info error for %s: %s", info.get("symbol"), e)
+        return {"error": "Lookup Error", "symbol": info.get("symbol"), "message": str(e)}
+
+
+def extract_hourly_prices(data: List[Dict]) -> List[Dict]:
+    """Fetch hourly price snapshots for all given symbols (default: NASDAQ 100)."""
+    results = []
+    for item in data:
+        results.append(get_hourly_stock_data(item))
+        time.sleep(5)
+    return results
+
+
+def extract_company_info(data: List[Dict]) -> List[Dict]:
+    """Fetch company info for all given symbols (default: NASDAQ 100)."""
+    results = []
+    for item in data:
+        results.append(get_company_info(item))
+        time.sleep(5)
+    return results
+
+
+def write_json(data: List[Dict], filename: str, path: Path) -> Path:
+    """Write a list of dicts to a timestamped JSON file under DATA_DIR."""
+    path.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
+    path_str = path / f"{filename}_{ts}0000.json"
+    with open(path_str, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, default=str)
+    logger.info("Wrote %d records to %s", len(data), path_str)
+    return path_str
+
+
+# if __name__ == "__main__":
+#     # Example usage: extract and save hourly prices and company info
+#     hourly_prices = extract_hourly_prices()
+#     # company_info = extract_company_info()
+
+#     # write_json(hourly_prices, "hourly_prices", Path("./data/hourly"))
+#     # write_json(company_info, "company_info", Path("./data/company_info"))
+#     print(hourly_prices[0])
