@@ -40,10 +40,14 @@ print(f"Current hour: {hourly_data}")
 
 # COMMAND ----------
 
+files = dbutils.fs.ls(f"{RAW_DIR}/hourly_data/{current_date}/")
+files = [file.name for file in files if file.name.endswith(".json")]
+print(f"Available hourly data files for {current_date}: {files}")
+if not hourly_data + ".json" in files:
+    source_path = f"{RAW_DIR}/hourly_data/{current_date}/{sorted(files)[-1]}"
 
-def stock_data_bronze_view(date: str, hourly_data: str) -> None:
+def stock_data_bronze_view(date: str, source_path: str) -> None:
     """Create or replace the bronze view for the current stock batch."""
-    source_path = f"{RAW_DIR}/hourly_data/{date}/{hourly_data}.json"
     view_name = "bronze.stock_data_hourly"
 
     spark.sql(
@@ -105,7 +109,7 @@ def validate_bronze_stock_view(view_name: str, date: str, hourly_data: str) -> d
 
 # COMMAND ----------
 
-stock_data_bronze_view(current_date, hourly_data)
+stock_data_bronze_view(current_date, source_path)
 
 # COMMAND ----------
 
