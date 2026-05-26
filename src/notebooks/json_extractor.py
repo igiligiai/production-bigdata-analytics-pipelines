@@ -12,7 +12,8 @@ BASE_DIR = "dbfs:/raw/depeap/extract"
 
 # COMMAND ----------
 
-info: List[Dict] = fetch_stock_data()
+# info: List[Dict] = fetch_stock_data()
+info: List[Dict] = [{}]
 
 
 def write_hourly_data(info: List[Dict]) -> None:
@@ -39,8 +40,8 @@ def write_company_info(info: List[Dict]) -> None:
 
 # COMMAND ----------
 
-write_hourly_data(info)
+# write_hourly_data(info)
 
 # COMMAND ----------
 
-write_company_info(info)
+# write_company_info(info)
