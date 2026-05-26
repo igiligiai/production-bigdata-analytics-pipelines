@@ -1,7 +1,7 @@
 resources:
   jobs:
-    daily_ecommerce_pipeline:
-      name: Daily E-Commerce ETL Pipeline
+    hourly_ecommerce_pipeline:
+      name: Hourly E-Commerce ETL Pipeline
       description: "Multi-stage pipeline: Extract APIs → Bronze → Silver → Gold"
       
       schedule:

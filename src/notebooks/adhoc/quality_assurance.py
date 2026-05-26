@@ -188,31 +188,26 @@ print(f"{'='*70}\n")
 
 print("BRONZE LAYER VALIDATION\n")
 
-# Bronze: Products
-print("🔍 bronze.raw_fakestore_products")
-bronze_products_validator = DataQualityValidator("bronze.raw_fakestore_products")
-bronze_products_validator.check_record_count(min_records=5)
-bronze_products_validator.check_non_null_columns(["id"])
-summary = bronze_products_validator.summary()
+# Bronze: Stock Data Hourly
+print("🔍 bronze.stock_data_hourly")
+bronze_stock_validator = DataQualityValidator("bronze.stock_data_hourly")
+bronze_stock_validator.check_record_count(min_records=5)
+summary = bronze_stock_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 if summary['failures']:
     for failure in summary['failures']:
         print(f"   ❌ {failure}")
 
-# Bronze: Orders
-print("\n🔍 bronze.raw_fakestore_orders")
-bronze_orders_validator = DataQualityValidator("bronze.raw_fakestore_orders")
-bronze_orders_validator.check_record_count(min_records=5)
-bronze_orders_validator.check_non_null_columns(["id", "userId"])
-summary = bronze_orders_validator.summary()
+# Bronze: Company Info
+print("\n🔍 bronze.company_info")
+bronze_company_validator = DataQualityValidator("bronze.company_info")
+bronze_company_validator.check_record_count(min_records=5)
+bronze_company_validator.check_non_null_columns(["company_name", "symbol"])
+summary = bronze_company_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
-
-# Bronze: Carts
-print("\n🔍 bronze.raw_fakestore_carts")
-bronze_carts_validator = DataQualityValidator("bronze.raw_fakestore_carts")
-bronze_carts_validator.check_record_count(min_records=1)
-summary = bronze_carts_validator.summary()
-print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
+if summary['failures']:
+    for failure in summary['failures']:
+        print(f"   ❌ {failure}")
 
 # ====================================================================
 # VALIDATE SILVER LAYER
@@ -241,37 +236,6 @@ summary = silver_company_validator.summary()
 print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 for failure in summary['failures'][:3]:
     print(f"   ⚠️  {failure}")
-
-# Silver: Products
-print("🔍 silver.products_cleaned")
-silver_products_validator = DataQualityValidator("silver.products_cleaned")
-silver_products_validator.check_record_count(min_records=5)
-silver_products_validator.check_non_null_columns(["product_id", "title"])
-silver_products_validator.check_no_duplicates(["product_id", "source_api"])
-silver_products_validator.check_value_ranges("price", min_val=0, max_val=1000)
-silver_products_validator.check_quality_flag_distribution("data_quality_flags", ok_threshold=0.90)
-summary = silver_products_validator.summary()
-print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
-for failure in summary['failures'][:3]:
-    print(f"   ⚠️  {failure}")
-
-# Silver: Orders
-print("\n🔍 silver.orders_cleaned")
-silver_orders_validator = DataQualityValidator("silver.orders_cleaned")
-silver_orders_validator.check_record_count(min_records=5)
-silver_orders_validator.check_non_null_columns(["order_id", "user_id"])
-silver_orders_validator.check_no_duplicates(["order_id"])
-silver_orders_validator.check_quality_flag_distribution("data_quality_flags", ok_threshold=0.90)
-summary = silver_orders_validator.summary()
-print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
-
-# Silver: Carts
-print("\n🔍 silver.carts_cleaned")
-silver_carts_validator = DataQualityValidator("silver.carts_cleaned")
-silver_carts_validator.check_record_count(min_records=1)
-silver_carts_validator.check_non_null_columns(["cart_id", "user_id"])
-summary = silver_carts_validator.summary()
-print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['total_checks']} checks)")
 
 # ====================================================================
 # VALIDATE GOLD LAYER
@@ -361,14 +325,6 @@ print(f"   Status: {summary['status']} ({summary['passed_checks']}/{summary['tot
 print(f"\n{'─'*70}\n")
 print("CROSS-TABLE VALIDATION (Referential Integrity)\n")
 
-# Check that all order user_ids exist in products
-silver_orders = spark.table("silver.orders_cleaned")
-silver_products = spark.table("silver.products_cleaned")
-
-print("🔗 Referential Integrity: Orders → Products")
-orders_with_products = silver_orders.select("product_ids").collect()
-print(f"   Orders referencing products: {len(orders_with_products)}")
-
 # Check: Gold market summary symbols should exist in silver hourly prices
 gold_market_summary = spark.table("gold.gold_market_summary")
 silver_hourly_prices = spark.table("silver.silver_hourly_prices")
@@ -395,8 +351,6 @@ print("DATA VOLUME METRICS\n")
 
 tables_stats = []
 for table_name in [
-    "bronze.raw_fakestore_products",
-    "silver.products_cleaned",
     "gold.gold_market_summary",
     "gold.gold_sector_performance",
     "gold.gold_best_performing_today",
@@ -431,9 +385,7 @@ print("VALIDATION SUMMARY")
 print(f"{'='*70}\n")
 
 all_validators = [
-    bronze_products_validator, bronze_orders_validator, bronze_carts_validator,
     silver_hourly_validator, silver_company_validator,
-    silver_products_validator, silver_orders_validator, silver_carts_validator,
     gold_market_summary_validator, gold_sector_performance_validator,
     gold_best_validator, gold_worst_validator, gold_volatile_validator,
     gold_volume_validator, gold_range_validator, gold_price_validator
